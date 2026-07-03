@@ -408,9 +408,11 @@ def test_create_cubed_sphere_grid(cs, cubed_sphere_connections):
 
 
 def test_diff_interp_cubed_sphere(cs, cubed_sphere_connections):
-    # All faces are fully connected, so the pre-pad boundary is overwritten by the
-    # face-connection halos; set it explicitly now that there is no periodic default.
-    grid = Grid(cs, face_connections=cubed_sphere_connections, boundary="fill")
+    # Note: no `boundary` is specified. On a fully connected topology like the
+    # cubed sphere, every edge that requires padding gets its halo from a face
+    # connection, so no boundary condition is needed and the padding-time
+    # "no boundary condition was specified" error must not fire.
+    grid = Grid(cs, face_connections=cubed_sphere_connections)
     face, _ = xr.broadcast(cs.face, cs.data_c)
 
     face_diff_x = grid.diff(face, "X")
@@ -420,6 +422,24 @@ def test_diff_interp_cubed_sphere(cs, cubed_sphere_connections):
     face_diff_y = grid.diff(face, "Y")
     np.testing.assert_allclose(face_diff_y[:, 0, 0], [-4, -3, -2, -1, 2, 5])
     np.testing.assert_allclose(face_diff_y[:, 0, -1], [-4, -3, -2, -1, 2, 5])
+
+    # interp must work without a boundary condition as well
+    face_interp_x = grid.interp(face, "X")
+    np.testing.assert_allclose(face_interp_x[:, 0, 0], [1.5, 0.5, 1.5, 2.5, 3.5, 4.0])
+
+
+def test_unconnected_edge_without_boundary_raises(ds, ds_face_connections_x_to_x):
+    # Regression test for the no-boundary guard on partially connected grids:
+    # faces 0 and 1 are joined along X in the middle, but the outer X edges
+    # (left edge of face 0, right edge of face 1) are unconnected. With no
+    # boundary condition specified anywhere, padding along X genuinely needs a
+    # boundary for those outer edges, so the informative error must still fire.
+    grid = Grid(ds, face_connections=ds_face_connections_x_to_x)
+    with pytest.raises(ValueError, match="No boundary condition was specified"):
+        grid.diff(ds.data_c, "X")
+
+    # ...but supplying the boundary at operation time must work.
+    _ = grid.diff(ds.data_c, "X", boundary="fill")
 
 
 def test_cubed_sphere_scalar_pad_connected_halos(cs, cubed_sphere_connections):

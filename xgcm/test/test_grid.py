@@ -358,11 +358,11 @@ def test_default_boundary_is_not_periodic():
 
 
 def test_declared_nonperiodic_axis_does_not_wrap():
-    """Regression test for GH #509 / #604 / #624: an axis declared with a
-    non-periodic boundary must actually use that boundary (e.g. 'fill') instead
-    of wrapping. Previously the default periodic behavior leaked through even when
-    a non-periodic boundary was specified. The `periodic`-vs-boundary string/list
-    confusion of #624 disappears now that only `boundary` exists."""
+    """Consistency guard (GH #509 / #604 / #624): an axis declared with an
+    explicitly non-periodic boundary (e.g. 'fill') must never wrap, and must
+    give a different result at the wrap-around edge than a periodic axis.
+    The `periodic`-vs-`boundary` string/list confusion of #624 disappears now
+    that only `boundary` exists."""
     ds = datasets["1d_left"]
     ds, grid_kwargs = parse_comodo(ds)
 

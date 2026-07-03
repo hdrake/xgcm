@@ -132,11 +132,50 @@ def _pad_face_connections(
     # the same shape. We will pad everything now and then replace the connections.
     # That might however not be the most computational efficient way to do it.
 
+    n_facedim = len(da[facedim])
+
+    # The pre-padding below pads every face on every edge, but its values only
+    # matter on edges *without* a face connection: connected edges have their
+    # placeholder halos overwritten with neighbor data afterwards. An axis may
+    # therefore legitimately carry no boundary condition (``None``) as long as
+    # every edge that genuinely requires padding is connected. Check this here
+    # (raising the informative no-boundary error only for unconnected edges),
+    # and substitute a neutral 'fill' for the placeholder pre-padding of fully
+    # connected axes so that ``_pad_basic``'s no-boundary guard does not fire
+    # for halos that are about to be overwritten anyway.
+    face_links = connections[facedim]
+    prepad_padding = dict(padding)
+    for axname in pad_axes:
+        if prepad_padding.get(axname) is not None:
+            continue
+        for side, side_name in [(0, "left"), (1, "right")]:
+            if padding_width[axname][side] == 0:
+                continue
+            unconnected_faces = [
+                i
+                for i in range(n_facedim)
+                if face_links.get(i, {}).get(axname, (None, None))[side] is None
+            ]
+            if unconnected_faces:
+                raise ValueError(
+                    f"No boundary condition was specified for axis {axname!r}, "
+                    f"but the requested operation needs to pad the {side_name} "
+                    f"edge of face(s) {unconnected_faces}, which have no face "
+                    f"connection there. Set a boundary condition, e.g. "
+                    f"``boundary='fill'`` (or 'extend'/'periodic'), on the Grid "
+                    f"(``Grid(..., boundary=...)``) or pass ``boundary=`` to the "
+                    f"grid method."
+                )
+        # Every padded edge of this axis is connected, so the pre-padded halos
+        # are placeholders that will be overwritten by connection data (or
+        # trimmed); use a neutral fill for them.
+        prepad_padding[axname] = "fill"
+
     da_prepadded = _pad_basic(
         da,
         grid,
         max_padding_width,
-        padding,
+        prepad_padding,
         fill_value,
     )
 
@@ -145,11 +184,9 @@ def _pad_face_connections(
             da_partner,
             grid,
             max_padding_width,
-            padding,
+            prepad_padding,
             fill_value,
         )
-
-    n_facedim = len(da[facedim])
     faces = []
 
     # Iterate over each face and pad accordingly
