@@ -1057,7 +1057,7 @@ def test_grid_transform(all_cases_except_conservative_multidim):
 
     axis = list(grid_kwargs["coords"].keys())[0]
 
-    grid = Grid(source, periodic=False, **grid_kwargs)
+    grid = Grid(source, **grid_kwargs)
 
     # construct output name
     transform_kwargs.setdefault("suffix", "")
@@ -1076,7 +1076,7 @@ def test_conservative_interp_error_if_multidim_target_dim(conservative_multidim_
 
     axis = list(grid_kwargs["coords"].keys())[0]
 
-    grid = Grid(source, periodic=False, **grid_kwargs)
+    grid = Grid(source, **grid_kwargs)
 
     with pytest.raises(NotImplementedError):
         _ = grid.transform(source.data, axis, target, **transform_kwargs)
@@ -1095,7 +1095,7 @@ def test_conservative_interp_warn_if_no_cell_bounds():
 
     axis = list(grid_kwargs["coords"].keys())[0]
 
-    grid = Grid(source, periodic=False, **grid_kwargs)
+    grid = Grid(source, **grid_kwargs)
     with pytest.warns(
         UserWarning,
         match="The `target data` input is not located on the cell bounds. This method will continue with linear interpolation with repeated boundary values.",
@@ -1110,7 +1110,7 @@ def test_grid_transform_noname_data(multidim_cases):
 
     axis = list(grid_kwargs["coords"].keys())[0]
 
-    grid = Grid(source, periodic=False, **grid_kwargs)
+    grid = Grid(source, **grid_kwargs)
 
     source_da = source.data
     source_da.name = None
@@ -1134,7 +1134,7 @@ def test_grid_transform_noname_targetdata():
 
     axis = list(grid_kwargs["coords"].keys())[0]
 
-    grid = Grid(source, periodic=False, **grid_kwargs)
+    grid = Grid(source, **grid_kwargs)
 
     source_da = source.data
     target_data = transform_kwargs.pop("target_data")
@@ -1156,7 +1156,9 @@ def test_transform_error_periodic(multidim_cases):
 
     axis = list(grid_kwargs["coords"].keys())[0]
 
-    grid = Grid(source, **grid_kwargs)
+    # `transform` is not supported on periodic axes, so build a periodic grid and
+    # confirm the operation raises.
+    grid = Grid(source, boundary="periodic", **grid_kwargs)
 
     with pytest.raises(ValueError):
         _ = grid.transform(source.data, axis, target, **transform_kwargs)
@@ -1168,7 +1170,7 @@ def test_grid_transform_auto_naming(multidim_cases):  # only test a few cases
     source, grid_kwargs, target, transform_kwargs, expected, error_flag = multidim_cases
 
     axis = list(grid_kwargs["coords"].keys())[0]
-    grid = Grid(source, periodic=False, **grid_kwargs)
+    grid = Grid(source, **grid_kwargs)
 
     # modify the expected naming and convert target to numpy array
     target_data = transform_kwargs.setdefault("target_data", None)
@@ -1203,7 +1205,7 @@ def test_grid_transform_bypass_checks(bypass_checks):
     ) = construct_test_source_data(cases["linear_depth_dens"])
 
     axis = list(grid_kwargs["coords"].keys())[0]
-    grid = Grid(source, periodic=False, **grid_kwargs)
+    grid = Grid(source, **grid_kwargs)
 
     target_data = transform_kwargs.pop("target_data", None)
 
@@ -1278,7 +1280,7 @@ def test_grid_transform_multidim(request, client, multidim_cases):
 
     # calculate the multidimensional result
     axis = list(grid_kwargs["coords"].keys())[0]
-    grid = Grid(source, periodic=False, **grid_kwargs)
+    grid = Grid(source, **grid_kwargs)
 
     # the high level tests should deal with all error cases
     client = request.getfixturevalue(client)
@@ -1302,7 +1304,7 @@ def test_grid_transform_multidim_with_target_dim(
         spatially_varying_vertical_target_coord_cases
     )
     target_data = transform_kwargs.pop("target_data", None)
-    grid = Grid(source, periodic=False, **grid_kwargs)
+    grid = Grid(source, **grid_kwargs)
 
     # the high level tests should deal with all error cases
     client = request.getfixturevalue(client)
@@ -1332,7 +1334,7 @@ def test_grid_transform_multidim_other_dims_error(request, multidim_cases):
         # calculate the multidimensional result
         axis = list(grid_kwargs["coords"].keys())[0]
 
-        grid = Grid(source, periodic=False, **grid_kwargs)
+        grid = Grid(source, **grid_kwargs)
         with pytest.raises(ValueError):
             _ = grid.transform(
                 source.data, axis, target, target_data=target_data, **transform_kwargs
@@ -1358,7 +1360,7 @@ def test_chunking_dim_error():
 
     source = source.chunk({"depth": 1})
     axis = list(grid_kwargs["coords"].keys())[0]
-    grid = Grid(source, periodic=False, **grid_kwargs)
+    grid = Grid(source, **grid_kwargs)
     with pytest.raises(ValueError):
         _ = grid.transform(source.data, axis, target, **transform_kwargs)
 
@@ -1376,7 +1378,7 @@ def test_grid_transform_input_check():
 
     axis = list(grid_kwargs["coords"].keys())[0]
 
-    grid = Grid(source, periodic=False, **grid_kwargs)
+    grid = Grid(source, **grid_kwargs)
 
     # construct output name
     transform_kwargs.setdefault("suffix", "")

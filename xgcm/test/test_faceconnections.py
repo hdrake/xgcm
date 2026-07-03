@@ -163,7 +163,7 @@ def test_create_connected_grid_error_wrong_facedim(ds, ds_face_connections_x_to_
 
 def test_diff_interp_connected_grid_x_to_x(ds, ds_face_connections_x_to_x):
     # simplest scenario with one face connection
-    grid = Grid(ds, face_connections=ds_face_connections_x_to_x, periodic=False)
+    grid = Grid(ds, face_connections=ds_face_connections_x_to_x, boundary="fill")
     diff_x = grid.diff(ds.data_c, "X", boundary="fill")
     interp_x = grid.interp(ds.data_c, "X", boundary="fill")
 
@@ -210,9 +210,7 @@ def test_vector_connected_grid_x_to_y(ds, ds_face_connections_x_to_y, boundary):
         face_connections=ds_face_connections_x_to_y,
         boundary=boundary,
         fill_value=1,
-        periodic=False,
     )
-    # TODO: Remove the periodic once that is deprecated.
     # ! Set boundary on grid, so it is applied to all axes.
     # TODO: modify the non velocity tests too (after release)
 
@@ -410,7 +408,9 @@ def test_create_cubed_sphere_grid(cs, cubed_sphere_connections):
 
 
 def test_diff_interp_cubed_sphere(cs, cubed_sphere_connections):
-    grid = Grid(cs, face_connections=cubed_sphere_connections)
+    # All faces are fully connected, so the pre-pad boundary is overwritten by the
+    # face-connection halos; set it explicitly now that there is no periodic default.
+    grid = Grid(cs, face_connections=cubed_sphere_connections, boundary="fill")
     face, _ = xr.broadcast(cs.face, cs.data_c)
 
     face_diff_x = grid.diff(face, "X")

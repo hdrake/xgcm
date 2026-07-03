@@ -91,8 +91,8 @@ plt.close()
 If we now compute the difference using the 5 conditions:
 
 ```python
-grid_no_perio = Grid(ds, periodic=False)
-grid_perio = Grid(ds, periodic=True)
+grid_no_perio = Grid(ds, boundary="fill")
+grid_perio = Grid(ds, boundary="periodic")
 
 g_extend = grid_no_perio.diff(g, "X", boundary="extend").rename("extend")
 g_fill_0 = grid_no_perio.diff(g, "X", boundary="fill", fill_value=0).rename("fill0")

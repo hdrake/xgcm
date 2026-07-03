@@ -20,7 +20,7 @@ class Axis:
         str, str
     ]  # TODO give this mapping from positions to dimension names a better name?
     _default_shifts: Mapping[str, str]
-    _boundary: str
+    _boundary: Optional[str]
     _fill_value: float
 
     """A single direction along a model grid, containing potentially multiple cell positions."""
@@ -114,11 +114,17 @@ class Axis:
                     f"Can't set the default shift for {pos} to be to {pos}"
                 )
 
-        if boundary is None:
-            boundary = "periodic"
-        if boundary not in _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG:
+        # ``boundary=None`` means "no boundary condition specified". It is a valid
+        # (and the default) state: operations that do not require padding along this
+        # axis work fine, while those that do will raise an informative error at
+        # padding time rather than silently wrapping. See GH #509, #604, #624.
+        if (
+            boundary is not None
+            and boundary not in _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG
+        ):
             raise ValueError(
-                f"boundary must be one of {_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG.keys()}, but got {boundary}"
+                f"boundary must be one of {list(_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG.keys())} "
+                f"or None, but got {boundary}"
             )
         self._boundary = boundary
 
@@ -158,7 +164,7 @@ class Axis:
         return self._default_shifts
 
     @property
-    def boundary(self) -> str:
+    def boundary(self) -> Optional[str]:
         return self._boundary
 
     def __repr__(self):

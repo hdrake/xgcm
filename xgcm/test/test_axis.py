@@ -17,7 +17,8 @@ class TestInit:
 
         # test default values of attributes
         assert axis.default_shifts == {"left": "center", "center": "left"}
-        assert axis.boundary == "periodic"
+        # No boundary condition is applied by default (previously "periodic").
+        assert axis.boundary is None
 
     def test_override_defaults(self, periodic_1d):
         # test initialisation

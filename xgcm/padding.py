@@ -16,7 +16,6 @@ _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG = {
     "periodic": "wrap",
     "fill": "constant",
     "extend": "edge",
-    None: "wrap",  # current default is periodic. This should achieve that.
 }
 
 
@@ -350,6 +349,18 @@ def _pad_basic(
         axis = grid.axes[ax]
         _, dim = axis._get_position_name(da)
         ax_padding = padding[ax]
+        # A boundary condition is genuinely required whenever this edge is
+        # actually padded (non-zero width). If none was specified (``None``)
+        # we refuse to silently wrap (the old, surprising default) and instead
+        # ask the user to make the boundary explicit. See GH #509, #604, #624.
+        if ax_padding is None and any(w != 0 for w in widths):
+            raise ValueError(
+                f"No boundary condition was specified for axis {ax!r}, but the "
+                f"requested operation needs to pad it. Set a boundary condition, "
+                f"e.g. ``boundary='fill'`` (or 'extend'/'periodic'), on the Grid "
+                f"(``Grid(..., boundary=...)``) or pass ``boundary=`` to the "
+                f"grid method."
+            )
         # translate padding and kwargs to xarray.pad syntax
         ax_padding = _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG[ax_padding]
         if ax_padding == "constant":

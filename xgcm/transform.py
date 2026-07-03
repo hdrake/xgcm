@@ -380,7 +380,9 @@ def transform(
     # raise error if axis is periodic
     if axis.boundary == "periodic":
         raise ValueError(
-            "`transform` can only be used on axes that are non-periodic. Pass `periodic=False` to `xgcm.Grid`."
+            "`transform` can only be used on axes that are non-periodic. Set a "
+            "non-periodic boundary (e.g. `boundary='fill'`, or leave it unset) "
+            "for this axis on `xgcm.Grid`."
         )
 
     # raise error if the target values are not provided as xr.dataarray
