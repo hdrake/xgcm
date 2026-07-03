@@ -23,7 +23,7 @@
   instead of silently wrapping. Pass `boundary="periodic"` to recover the old
   wrap-around behavior. This makes the default explicitly non-periodic and fixes
   cases where a declared non-periodic axis could still wrap.
-  ([#XXX](https://github.com/xgcm/xgcm/pull/XXX);
+  ([#746](https://github.com/xgcm/xgcm/pull/746);
   closes [#195](https://github.com/xgcm/xgcm/issues/195),
   [#509](https://github.com/xgcm/xgcm/issues/509),
   [#604](https://github.com/xgcm/xgcm/issues/604),
