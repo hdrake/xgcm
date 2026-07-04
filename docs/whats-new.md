@@ -7,6 +7,17 @@
 
 ### Breaking Changes
 
+- Removed the deprecated `keep_coords` keyword argument from grid operations
+  (`Grid.interp`, `Grid.diff`, `Grid.min`, `Grid.max`, `Grid.cumsum`, etc.) and from
+  `apply_as_grid_ufunc`. The behavior is now always that formerly given by
+  `keep_coords=True`: coordinates compatible with the output (including non-dimension
+  coordinates) are preserved. Note that this silently changes the **default** output of
+  `Grid.interp`, `Grid.diff`, `Grid.min`, `Grid.max`, `Grid.cumsum`, `Grid.derivative`,
+  and `Grid.cumint`, which previously dropped non-dimension coordinates from the result
+  and now retains them. Passing `keep_coords=` now raises a `ValueError`
+  ([#382](https://github.com/xgcm/xgcm/issues/382), [#745](https://github.com/xgcm/xgcm/pull/745)).
+  By [Henri Drake](https://github.com/hdrake).
+
 - `Axis` is no longer importable from the top-level `xgcm` namespace, making effective the
   removal announced in v0.9.0; internal use continues via `xgcm.axis.Axis`
   ([#405](https://github.com/xgcm/xgcm/issues/405), [#557](https://github.com/xgcm/xgcm/pull/557),
