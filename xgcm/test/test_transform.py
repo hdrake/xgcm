@@ -1094,7 +1094,7 @@ def test_conservative_transform_explicit_target_dim():
 
     axis = list(grid_kwargs["coords"].keys())[0]
 
-    grid = Grid(source, periodic=False, **grid_kwargs)
+    grid = Grid(source, **grid_kwargs)
 
     (target_dim,) = target.dims
     assert len(target_dim) > 1
