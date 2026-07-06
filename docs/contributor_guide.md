@@ -51,6 +51,19 @@ pixi run docs-serve
 ```
 This will start a live preview running on `http://127.0.0.1:8000/`
 
+## Running the documentation notebooks
+
+The documentation notebooks that live directly in `docs/` (`transform.ipynb` and
+`grid_metrics.ipynb`) run in the `docs` pixi environment, which bundles everything
+they need (including `numba` for `Grid.transform` and `matplotlib`). To open them
+interactively in Jupyter Lab:
+
+```
+pixi run notebooks
+```
+
+This launches Jupyter Lab rooted at the `docs` folder.
+
 ## Versioning policy
 
 xgcm uses [Intended Effort Versioning (EffVer)](https://jacobtomlinson.dev/effver/): version numbers are `MACRO.MESO.MICRO`. A **MACRO** bump signals that adopting the release may require a large effort from users; a **MESO** bump signals that some effort may be required; a **MICRO** bump signals that little to no effort is expected. Version numbers communicate the *intended* upgrade effort, not a strict API-compatibility guarantee. (For releases below 1.0.0, the segments shift one position per EffVer's zero-version guidance: `0.MACRO.MESO`.)

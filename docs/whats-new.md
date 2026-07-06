@@ -47,6 +47,10 @@
 - Migrate documentation to mkdocs ([#691](https://github.com/xgcm/xgcm/pull/691))
   By [Nick Hodgskin](https://github.com/VeckoTheGecko).
 
+- Document which environment runs the documentation notebooks (`transform.ipynb`, `grid_metrics.ipynb`).
+  The existing `docs` pixi environment now bundles Jupyter Lab and can be launched with `pixi run notebooks`,
+  and the notebooks and contributor guide note the required dependencies ([#667](https://github.com/xgcm/xgcm/issues/667)).
+
 - xgcm now follows [Intended Effort Versioning (EffVer)](https://jacobtomlinson.dev/effver/); the policy
   is documented in the contributor guide and advertised by a README badge
   ([#679](https://github.com/xgcm/xgcm/issues/679), [#680](https://github.com/xgcm/xgcm/pull/680), [#742](https://github.com/xgcm/xgcm/pull/742)).
