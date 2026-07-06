@@ -1205,12 +1205,6 @@ class Grid:
                 metric = self.get_metric(reattached, ax_metric_weighted)
                 reattached = reattached / metric
 
-            # On a 'decreasing' axis the cumulative integral ``∫f dz`` (with
-            # ``dz < 0``) is the negative of the cumulative sum weighted by the
-            # unsigned cell thickness, so flip the sign (cumint inherits this
-            # via cumsum).
-            reattached = reattached * ax.direction_sign
-
             data = reattached
 
         return data

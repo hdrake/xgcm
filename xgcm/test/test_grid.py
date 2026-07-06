@@ -254,10 +254,16 @@ def test_axis_directionality():
         )
 
         # direction-sensitive operations are sign-flipped on a decreasing axis
-        for funcname in ["diff", "derivative", "cumsum", "cumint"]:
+        for funcname in ["diff", "derivative"]:
             inc = getattr(grid_inc, funcname)(ds.tracer, axis_name)
             dec = getattr(grid_dec, funcname)(ds.tracer, axis_name)
             xr.testing.assert_allclose(dec, -inc)
+
+        # cumsum/cumint are not direction-sensitive
+        for funcname in ["cumsum", "cumint"]:
+            inc = getattr(grid_inc, funcname)(ds.tracer, axis_name)
+            dec = getattr(grid_dec, funcname)(ds.tracer, axis_name)
+            xr.testing.assert_identical(dec, inc)
 
         # orientation-symmetric operations are unaffected
         for funcname in ["interp", "min", "max"]:
