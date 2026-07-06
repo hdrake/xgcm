@@ -7,6 +7,13 @@
 
 ### Breaking Changes
 
+- The `boundary` argument (and `boundary_width`) has been renamed to `padding` (and `padding_width`)
+  throughout the public API, to better reflect the process of array padding and avoid confusion with
+  physical boundary conditions (e.g. an ocean-land boundary). The old names now raise an informative
+  error rather than going through a deprecation cycle
+  ([#678](https://github.com/xgcm/xgcm/issues/678), [#696](https://github.com/xgcm/xgcm/pull/696)).
+  By [Nick Hodgskin](https://github.com/VeckoTheGecko).
+
 - Removed the deprecated `keep_coords` keyword argument from grid operations
   (`Grid.interp`, `Grid.diff`, `Grid.min`, `Grid.max`, `Grid.cumsum`, etc.) and from
   `apply_as_grid_ufunc`. The behavior is now always that formerly given by
