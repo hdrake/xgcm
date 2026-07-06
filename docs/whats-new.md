@@ -5,16 +5,6 @@
 
 ### New Features
 
-- Methods for autoparsing of dataset metadata to construct a `xgcm.Grid` class have been added.
-  Currently these include restructred functionality for the COMODO conventions (already in xgcm) and the
-  addition of SGRID conventions ([#109](https://github.com/xgcm/xgcm/issues/109), [#559](https://github.com/xgcm/xgcm/pull/559)).
-  By [Jack Atkinson](https://github.com/jatkinson1000).
-
-- Vertical coordinate transformations are now also supported for multi-dimensional targets, for example a
-  terrain-following (spatially varying) vertical coordinate. This feature currently only works with the linear
-  interpolation method ([#614](https://github.com/xgcm/xgcm/issues/614), [#642](https://github.com/xgcm/xgcm/pull/642)).
-  By [Nora Loose](https://github.com/noraloose).
-
 - Add a bipolar north-fold boundary condition for tripolar ocean grids (MOM6, NEMO, MOM5,
   Oceananigans), requested as a per-axis boundary on the fold axis, e.g.
   `boundary={"X": "periodic", "Y": {"fold": "corner"}}`. The northern edge of the logical grid
