@@ -591,9 +591,9 @@ def _pad_fold(
     padding: Dict[str, str],
     fill_value: Dict[str, float],
 ):
-    """Pad a single-tile grid that has one or more north-fold boundaries.
+    """Pad a single-tile grid that has a north-fold boundary.
 
-    The *north* (upper) edge of each fold (Y) axis is filled from the mirrored
+    The *north* (upper) edge of the fold (Y) axis is filled from the mirrored
     interior (`_fold_north_halo`); the south edge and every non-fold axis use the
     ordinary `_pad_basic` machinery.
     """
@@ -607,15 +607,22 @@ def _pad_fold(
     else:
         isvector = False
 
-    fold_axes = {
+    fold_axes = [
         ax for ax in padding_width if ax in grid._folds and padding_width[ax][1] > 0
-    }
+    ]
 
-    # 1. Attach the northern fold halo for each fold axis (computed from the
-    #    unpadded interior so the seam mirror sees the full periodic row).
-    #    Iterate in a stable (sorted) order so the concatenation is
-    #    deterministic when more than one fold axis is present.
-    for fax in sorted(fold_axes):
+    # A tripolar grid has a single north fold. We do not support (and have no
+    # use case for) padding more than one fold axis at once, so fail loudly
+    # rather than guess a concatenation order.
+    if len(fold_axes) > 1:
+        raise NotImplementedError(
+            "Padding more than one north-fold axis at once is not supported "
+            f"(got fold axes {sorted(fold_axes)})."
+        )
+
+    # 1. Attach the northern fold halo (computed from the unpadded interior so
+    #    the seam mirror sees the full periodic row).
+    for fax in fold_axes:
         info = grid._folds[fax]
         pivot = _resolve_pivot(info["pivot"], fax, info["seam_axis"])
         _, fold_dim = grid.axes[fax]._get_position_name(da)

@@ -56,7 +56,7 @@ class Axis:
         default_shifts : dict, optional
             Default mapping from and to grid positions
             (e.g. `{'center': 'left'}`). Will be inferred if not specified.
-        boundary : {None, 'fill', 'extend', 'periodic'}, optional
+        boundary : str or dict, optional
             A flag indicating how to handle boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
@@ -67,6 +67,12 @@ class Axis:
               value. (i.e. a limited form of Neumann boundary condition.)
             * 'periodic': Set values by wrapping around the array on the specified
                 axes. (i.e. a periodic boundary condition.)
+            * a fold spec (``dict``): a north-fold boundary for a tripolar grid,
+              e.g. ``{'fold': 'corner'}``. The value names the pivot the pole
+              sits on (``'center'``/``'T'``, ``'corner'``/``'F'``, ``'U'``,
+              ``'V'``, or an explicit ``{axis: position}`` mapping); an optional
+              ``'south'`` key sets the south-edge mode (default ``'fill'``).
+              Only the north edge folds. See ``padding.py`` for the conventions.
         fill_value : float, optional
             The value to use in the boundary condition when boundary='fill'.
         """
