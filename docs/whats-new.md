@@ -58,6 +58,13 @@
 
 ### Bugfixes
 
+- Respect the `fill_value` bound on the `@as_grid_ufunc` decorator (or passed to `GridUFunc`). It was
+  silently dropped in `GridUFunc.__call__` — only a call-time `fill_value` took effect, so a bound value
+  fell through to the `apply_as_grid_ufunc` default of `0`. The bound value is now forwarded (and still
+  overridable at call time), mirroring the other bound boundary kwargs
+  ([#652](https://github.com/xgcm/xgcm/issues/652), [#710](https://github.com/xgcm/xgcm/pull/710)).
+  By [Vincent Gao](https://github.com/gaoflow).
+
 - Fix `xgcm.padding.pad(..., other_component=...)` (and hence vector `Grid.diff`/`Grid.interp`)
   silently ignoring the vector rotation when the component is passed as a bare `DataArray`
   rather than a `{axis_name: DataArray}` dict. On a `face_connections` grid the bare form padded
