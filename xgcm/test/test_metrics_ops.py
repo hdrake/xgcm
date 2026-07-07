@@ -60,9 +60,7 @@ class TestParametrized:
         expected_raw = func(ds[variable] * metric, axis, padding=padding)
         metric_new = grid.get_metric(expected_raw, metric_weighted)
         expected = expected_raw / metric_new
-        new = func(
-            ds[variable], axis, metric_weighted=metric_weighted, padding=padding
-        )
+        new = func(ds[variable], axis, metric_weighted=metric_weighted, padding=padding)
         assert new.equals(expected)
 
     @pytest.mark.parametrize("multi_axis", ["X", ["X"], ("Y"), ["X", "Y"], ("Y", "X")])

@@ -715,9 +715,7 @@ def test_boundary_global_input(funcname, padding, fill_value):
     )
 
     func_manual = getattr(grid_manual, funcname)
-    manual_result = func_manual(
-        ds.tracer, axis, padding=padding, fill_value=fill_value
-    )
+    manual_result = func_manual(ds.tracer, axis, padding=padding, fill_value=fill_value)
     xr.testing.assert_allclose(global_result, manual_result)
 
 
