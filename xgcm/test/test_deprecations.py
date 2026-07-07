@@ -6,11 +6,13 @@ from xgcm.test.datasets import datasets
 pytestmark = pytest.mark.filterwarnings("error")
 
 
-def test_periodic_true_deprecation():
+def test_periodic_removed():
+    # `periodic` was removed in v1.0.0 (#746); passing it now raises an
+    # informative error pointing at `padding`.
     ds = datasets["2d_left"]
     with pytest.raises(
-        DeprecationWarning,
-        match="The `periodic` argument will be deprecated. To preserve previous behavior supply `padding = 'periodic'.",
+        ValueError,
+        match="The `periodic` argument has been removed",
     ):
         xgcm.Grid(
             ds,
