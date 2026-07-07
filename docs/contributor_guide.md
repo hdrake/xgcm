@@ -64,6 +64,24 @@ pixi run notebooks
 
 This launches Jupyter Lab rooted at the `docs` folder.
 
+## Pull request guidelines {#pull-request-guidelines}
+
+A few conventions keep changes easy to review and release:
+
+- **One focused change per PR.** Keep diffs small and single-purpose. PRs are
+  squash-merged, so each lands as a single commit whose title ends with the PR
+  number, e.g. `Add reverse option to Grid.cumsum (#729)`. If a change genuinely
+  cannot be split, structure the commits to aid review and say why in the PR body.
+- **Document user-visible changes in `docs/whats-new.md`.** Anything a user would
+  notice — a new feature, bug fix, or breaking change — gets an entry in the
+  matching section of the unreleased release, ending with an attribution line
+  `By [Your Name](https://github.com/yourhandle).` New public functions or
+  methods also go in `docs/api.md`. This is the single most common thing
+  reviewers ask contributors to add.
+- **Disclose AI assistance.** Using Claude or other LLM tools is welcome, but say
+  so openly — a `Co-Authored-By:` trailer on commits, and a note on any PR or
+  review comment that was drafted with AI.
+
 ## Versioning policy
 
 xgcm uses [Intended Effort Versioning (EffVer)](https://jacobtomlinson.dev/effver/): version numbers are `MACRO.MESO.MICRO`. A **MACRO** bump signals that adopting the release may require a large effort from users; a **MESO** bump signals that some effort may be required; a **MICRO** bump signals that little to no effort is expected. Version numbers communicate the *intended* upgrade effort, not a strict API-compatibility guarantee. (For releases below 1.0.0, the segments shift one position per EffVer's zero-version guidance: `0.MACRO.MESO`.)
