@@ -1367,23 +1367,76 @@ def test_grid_transform_multidim_other_dims_error(request, multidim_cases):
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
-def test_chunking_dim_error():
-    """Assure that error is raised when we chunk along the 'vertical' dimension"""
+def test_chunking_along_transform_dim_is_rechunked():
+    """Data chunked along the transform ('vertical') dimension is automatically
+    rechunked to a single chunk and transformed correctly, rather than raising a
+    ValueError (GH #753). Both ``da`` and a dask-backed ``target_data`` are
+    handled, and the result stays lazy (only rechunked, not computed)."""
 
     (
         source,
         grid_kwargs,
         target,
         transform_kwargs,
-        _,
+        expected,
         _,
     ) = construct_test_source_data(cases["linear_depth_dens"])
 
+    # chunk both the field and the target_data along the transform dimension
     source = source.chunk({"depth": 1})
+    if transform_kwargs.get("target_data") is not None:
+        transform_kwargs["target_data"] = transform_kwargs["target_data"].chunk(
+            {"depth": 1}
+        )
+
     axis = list(grid_kwargs["coords"].keys())[0]
     grid = Grid(source, periodic=False, **grid_kwargs)
-    with pytest.raises(ValueError):
-        _ = grid.transform(source.data, axis, target, **transform_kwargs)
+
+    transform_kwargs.setdefault("suffix", "")
+    output_name = "data" + transform_kwargs["suffix"]
+
+    transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+
+    # the transform axis was rechunked internally but the result is still lazy
+    assert transformed.chunks is not None
+    xr.testing.assert_allclose(transformed, expected[output_name])
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
+def test_chunking_along_transform_dim_is_rechunked_conservative():
+    """Same as above for the conservative method, where an on-center `target_data`
+    is internally interpolated to the cell bounds. The rechunk must happen before
+    that interpolation (itself a grid ufunc that forbids a chunked core dim), so a
+    vertically-chunked `target_data` still transforms rather than raising (GH #753)."""
+
+    (
+        source,
+        grid_kwargs,
+        target,
+        transform_kwargs,
+        expected,
+        _,
+    ) = construct_test_source_data(cases["conservative_depth_temp"])
+
+    source = source.chunk({"depth": 1})
+    if transform_kwargs.get("target_data") is not None:
+        transform_kwargs["target_data"] = transform_kwargs["target_data"].chunk(
+            {"depth": 1}
+        )
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+    grid = Grid(source, periodic=False, **grid_kwargs)
+
+    transform_kwargs.setdefault("suffix", "")
+    output_name = "data" + transform_kwargs["suffix"]
+
+    # target_data is on cell centers here, so transform interpolates it to the
+    # bounds internally (emitting this warning) -- exercising the pre-interp rechunk
+    with pytest.warns(UserWarning, match="not located on the cell bounds"):
+        transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+
+    assert transformed.chunks is not None
+    xr.testing.assert_allclose(transformed, expected[output_name])
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")

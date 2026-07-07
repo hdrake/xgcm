@@ -7,6 +7,15 @@
 
 ### Bug Fixes
 
+- `Grid.transform` now automatically rechunks the transform axis of both `da` and
+  `target_data` to a single dask chunk, instead of raising a `ValueError` when the
+  input is chunked along that axis. Previously only `target_data` was rechunked (and
+  only for the conservative method), so transforming a dask array chunked along the
+  vertical (e.g. CMIP6 ocean output) required a manual `.chunk({<axis>: -1})` at every
+  call site. Chunking along other dimensions is preserved, and numpy-backed inputs are
+  unaffected ([#753](https://github.com/xgcm/xgcm/issues/753)).
+  By [Henri Drake](https://github.com/hdrake).
+
 - `Axis` now raises a `ValueError` immediately if the same dimension name is
   assigned to more than one position (e.g. `{'center': 'x', 'outer': 'x'}`),
   rather than silently accepting the invalid configuration

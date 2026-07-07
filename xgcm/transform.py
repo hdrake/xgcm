@@ -448,11 +448,23 @@ def transform(
         _check_other_dims(target_data)
         return target, target_dim, target_data
 
+    def _single_chunk_along(arr, chunk_dim):
+        # xgcm.transform interpolates along the entire `axis`, so the core
+        # dimension must be a single dask chunk: xr.apply_ufunc with
+        # dask="parallelized" errors out on a chunked core dimension. Rechunk it
+        # to a single chunk, leaving all other dimensions' chunking untouched.
+        # No-op for numpy-backed or already single-chunk data.
+        if arr is not None and arr.chunks is not None and chunk_dim in arr.dims:
+            arr = arr.chunk({chunk_dim: -1})
+        return arr
+
     _, dim = axis._get_position_name(da)
+    da = _single_chunk_along(da, dim)
     if method == "linear" or method == "log":
         target, target_dim, target_data = _parse_target(
             target, target_dim, dim, target_data
         )
+        target_data = _single_chunk_along(target_data, dim)
         out = linear_interpolation(
             da,
             target_data,
@@ -486,6 +498,13 @@ def transform(
             target, target_dim, target_data_dim, target_data
         )
 
+        # `target_data` must be a single dask chunk along its core dimension: both
+        # so `grid.interp` below (a grid ufunc that likewise forbids a chunked core
+        # dimension) can run when interpolation is needed, and for the final
+        # apply_ufunc. Rechunk along whichever position `target_data` currently sits.
+        _, target_data_pos_dim = axis._get_position_name(target_data)
+        target_data = _single_chunk_along(target_data, target_data_pos_dim)
+
         # check on which coordinate `target_data` is, and interpolate if needed
         if target_data_dim not in target_data.dims:
             warnings.warn(
@@ -493,12 +512,6 @@ def transform(
                 UserWarning,
             )
             target_data = grid.interp(target_data, axis_name, boundary="extend")
-            # This seems to end up with chunks along the axis dimension.
-            # Rechunk to keep xr.apply_func from complaining.
-            # TODO: This should be made obsolete, when the internals are refactored using numba
-            target_data = target_data.chunk(
-                {axis._get_position_name(target_data)[1]: -1}
-            )
 
         out = conservative_interpolation(
             da,
