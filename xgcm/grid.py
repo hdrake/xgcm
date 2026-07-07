@@ -65,7 +65,7 @@ class Grid:
         default_shifts: Optional[
             Mapping[str, str]
         ] = None,  # TODO check if one default shift can be applied to many Axes
-        boundary: Optional[Union[str, Mapping[str, str]]] = None,
+        padding: Optional[Union[str, Mapping[str, str]]] = None,
         face_connections: Optional[
             Dict[str, Any]
         ] = None,  # TODO: add more specific typing
@@ -92,21 +92,21 @@ class Grid:
             If the values are not present in ``ds`` or are not dimensions,
             an error will be raised.
         fill_value : {float, dict}, optional
-            The value to use in boundary conditions with `boundary='fill'`.
+            The value to use in padding conditions with `padding='fill'`.
             Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
         default_shifts : dict
             A dictionary of dictionaries specifying default grid position
             shifts (e.g. ``{'X': {'center': 'left', 'left': 'center'}}``)
-        boundary : {None, 'fill', 'extend', 'periodic', dict}, optional
-            A flag indicating how to handle boundaries. The default (``None``)
+        padding : {None, 'fill', 'extend', 'periodic', dict}, optional
+            A flag indicating how to handle padding. The default (``None``)
             applies no boundary condition: operations that require padding along
             such an axis raise an informative error instead of silently wrapping.
             (This is a change from xgcm < 1.0, where the grid defaulted to
-            periodic. Pass ``boundary='periodic'`` to recover the old behavior.)
+            periodic. Pass ``padding='periodic'`` to recover the old behavior.)
 
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
+            * None:  Do not apply any padding conditions. Raise an error if
+              padding conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
               (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
@@ -129,6 +129,13 @@ class Grid:
         ----------
         .. [1] Comodo Conventions https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
         """
+        # TODO - remove deprecation handling
+        if "boundary" in kwargs:
+            raise ValueError(
+                "Argument 'boundary' has been renamed to 'padding'. "
+                "Please use 'padding' instead."
+            )
+
         if not isinstance(ds, xr.Dataset):
             raise TypeError(
                 f"ds argument to `xgcm.Grid` must be of type xarray.Dataset, but is of type {type(ds)}"
@@ -159,11 +166,11 @@ class Grid:
                     default_shifts = parsed_kwargs["default_shifts"]
                 else:
                     duplicates.append("default_shifts")
-            if "boundary" in parsed_kwargs:
-                if boundary is None:
-                    boundary = parsed_kwargs["boundary"]
+            if "padding" in parsed_kwargs:
+                if padding is None:
+                    padding = parsed_kwargs["padding"]
                 else:
-                    duplicates.append("boundary")
+                    duplicates.append("padding")
             if "face_connections" in parsed_kwargs:
                 if face_connections is None:
                     face_connections = parsed_kwargs["face_connections"]
@@ -182,27 +189,18 @@ class Grid:
                     f"autoparse and amend kwargs before calling Grid constructer."
                 )
 
-        if boundary:
-            warnings.warn(
-                "The `boundary` argument will be renamed "
-                "to `padding` to better reflect the process "
-                "of array padding and avoid confusion with "
-                "physical boundary conditions (e.g. ocean land boundary).",
-                category=DeprecationWarning,
-            )
-
         # TODO - remove deprecation handling
         # The `periodic` argument was removed in v1.0.0. Historically it
         # defaulted to True, silently making every axis periodic. That default
         # is the root of several boundary-condition bugs (GH #509, #604, #624),
         # so `periodic` is gone and boundaries must now be set explicitly via
-        # `boundary`. Intercept the old kwarg and point users at the replacement.
+        # `padding`. Intercept the old kwarg and point users at the replacement.
         if "periodic" in kwargs:
             raise ValueError(
                 "The `periodic` argument has been removed. Use "
-                "`boundary='periodic'` (per axis if needed, e.g. "
-                "`boundary={'X': 'periodic', 'Y': 'fill'}`) instead. "
-                "Previously `periodic=False` corresponded to `boundary='fill'`."
+                "`padding='periodic'` (per axis if needed, e.g. "
+                "`padding={'X': 'periodic', 'Y': 'fill'}`) instead. "
+                "Previously `periodic=False` corresponded to `padding='fill'`."
             )
         if kwargs:
             raise TypeError(
@@ -228,8 +226,8 @@ class Grid:
         # Convert all inputs to axes-kwarg mappings
         # TODO We need a way here to check valid input. Maybe also in _as_axis_kwargs?
         # Parse axis properties
-        boundary_dict = self._map_kwargs_over_axes(boundary, axes=all_axes)
-        # Any axis without an explicit boundary keeps ``None`` (no boundary
+        padding_dict = self._map_kwargs_over_axes(padding, axes=all_axes)
+        # Any axis without an explicit padding keeps ``None`` (no boundary
         # condition). Padding-requiring operations on such axes raise rather than
         # silently wrapping, which was the pre-1.0 `periodic=True` default.
         # TODO: In the future we want this the only place where we store these.
@@ -258,7 +256,7 @@ class Grid:
                 axis_name,
                 coords=coords[axis_name],
                 default_shifts=default_shifts_dict.get(axis_name, None),
-                boundary=boundary_dict.get(axis_name, None),
+                padding=padding_dict.get(axis_name, None),
                 fill_value=fill_value_dict.get(axis_name, None),
             )
 
@@ -536,7 +534,7 @@ class Grid:
             )
         return metric_vars
 
-    def interp_like(self, array, like, boundary=None, fill_value=None):
+    def interp_like(self, array, like, padding=None, fill_value=None, **kwargs):
         """Compares positions between two data arrays and interpolates array to the position of like if necessary
 
         Parameters
@@ -545,11 +543,11 @@ class Grid:
             DataArray to interpolate to the position of like
         like : DataArray
             DataArray with desired grid positions for source array
-        boundary : {None, 'fill', 'extend', 'periodic', dict}, optional
-            A flag indicating how to handle boundaries:
+        padding : {None, 'fill', 'extend', 'periodic', dict}, optional
+            A flag indicating how to handle padding:
 
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
+            * None:  Do not apply any padding conditions. Raise an error if
+              padding conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
               (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
@@ -559,13 +557,19 @@ class Grid:
             Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
         fill_value : float, optional
-            The value to use in the boundary condition when `boundary='fill'`.
+            The value to use in the padding condition when `padding='fill'`.
 
         Returns
         -------
         array : DataArray
             Source data array with updated positions along axes matching with target array
         """
+        # TODO - remove deprecation handling
+        if "boundary" in kwargs:
+            raise ValueError(
+                "Argument 'boundary' has been renamed to 'padding'. "
+                "Please use 'padding' instead."
+            )
 
         interp_axes = []
         for axname, axis in self.axes.items():
@@ -585,7 +589,7 @@ class Grid:
             array,
             interp_axes,
             fill_value=fill_value,
-            boundary=boundary,
+            padding=padding,
         )
         return array
 
@@ -594,7 +598,7 @@ class Grid:
         for name, axis in self.axes.items():
             is_periodic = "periodic" if axis._periodic else "not periodic"
             summary.append(
-                "%s Axis (%s, boundary=%r):" % (name, is_periodic, axis.boundary)
+                "%s Axis (%s, padding=%r):" % (name, is_periodic, axis.padding)
             )
             summary += axis._coord_desc()
         return "\n".join(summary)
@@ -743,8 +747,8 @@ class Grid:
         *args: xr.DataArray,
         axis: Optional[Sequence[Sequence[str]]] = None,
         signature: Union[str, _GridUFuncSignature] = "",
-        boundary_width: Optional[Mapping[str, Tuple[int, int]]] = None,
-        boundary: Optional[Union[str, Mapping[str, str]]] = None,
+        padding_width: Optional[Mapping[str, Tuple[int, int]]] = None,
+        padding: Optional[Union[str, Mapping[str, str]]] = None,
         fill_value: Optional[Union[float, Mapping[str, float]]] = None,
         dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
         map_overlap: bool = False,
@@ -774,14 +778,14 @@ class Grid:
             positions for each input and output variable, e.g.,
 
             ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)``.
-        boundary_width : Dict[str: Tuple[int, int]
+        padding_width : Dict[str: Tuple[int, int]
             The widths of the boundaries at the edge of each array.
             Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
-        boundary : {None, 'fill', 'extend', 'periodic', dict}, optional
-            A flag indicating how to handle boundaries:
+        padding : {None, 'fill', 'extend', 'periodic', dict}, optional
+            A flag indicating how to handle padding:
 
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
+            * None:  Do not apply any padding conditions. Raise an error if
+              padding conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
               (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
@@ -791,7 +795,7 @@ class Grid:
             Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
         fill_value : {float, dict}, optional
-            The value to use in boundary conditions with `boundary='fill'`.
+            The value to use in padding conditions with `padding='fill'`.
             Optionally a dict mapping axis name to separate values for each axis
             can be passed. Default is 0.
         dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
@@ -813,14 +817,28 @@ class Grid:
         apply_as_grid_ufunc
         as_grid_ufunc
         """
+        # TODO - remove deprecation handling
+        if "boundary" in kwargs:
+            raise ValueError(
+                "Argument 'boundary' has been renamed to 'padding'. "
+                "Please use 'padding' instead."
+            )
+
+        # TODO - remove deprecation handling
+        if "boundary_width" in kwargs:
+            raise ValueError(
+                "Argument 'boundary_width' has been renamed to 'padding_width'. "
+                "Please use 'padding_width' instead."
+            )
+
         return apply_as_grid_ufunc(
             func,
             *args,
             axis=axis,
             grid=self,
             signature=signature,
-            boundary_width=boundary_width,
-            boundary=boundary,
+            padding_width=padding_width,
+            padding=padding,
             fill_value=fill_value,
             dask=dask,
             map_overlap=map_overlap,
@@ -843,7 +861,7 @@ class Grid:
             The direction in which to shift the array (can be ['center','left','right','inner','outer']).
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
-        boundary : None or str or dict, optional
+        padding : None or str or dict, optional
             A flag indicating how to handle boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
@@ -855,7 +873,7 @@ class Grid:
 
             Optionally a dict with separate values for each axis can be passed (see example)
         fill_value : {float, dict}, optional
-            The value to use in the boundary condition with `boundary='fill'`.
+            The value to use in the boundary condition with `padding='fill'`.
             Optionally a dict with seperate values for each axis can be passed (see example)
         vector_partner : dict, optional
             A single key (string), value (DataArray).
@@ -877,7 +895,7 @@ class Grid:
         if a global 2D dataset should be interpolated on both X and Y axis, but it is
         only periodic in the X axis, we can do this:
 
-        >>> grid.interp(da, ["X", "Y"], boundary={"X": "periodic", "Y": "fill"})
+        >>> grid.interp(da, ["X", "Y"], padding={"X": "periodic", "Y": "fill"})
         """
         return self._1d_grid_ufunc_dispatch("interp", da, axis, **kwargs)
 
@@ -895,7 +913,7 @@ class Grid:
             The direction in which to shift the array (can be ['center','left','right','inner','outer']).
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
-        boundary : None or str or dict, optional
+        padding : None or str or dict, optional
             A flag indicating how to handle boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
@@ -907,7 +925,7 @@ class Grid:
 
             Optionally a dict with separate values for each axis can be passed (see example)
         fill_value : {float, dict}, optional
-            The value to use in the boundary condition with `boundary='fill'`.
+            The value to use in the boundary condition with `padding='fill'`.
             Optionally a dict with seperate values for each axis can be passed (see example)
         vector_partner : dict, optional
             A single key (string), value (DataArray).
@@ -947,7 +965,7 @@ class Grid:
             The direction in which to shift the array (can be ['center','left','right','inner','outer']).
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
-        boundary : None or str or dict, optional
+        padding : None or str or dict, optional
             A flag indicating how to handle boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
@@ -959,7 +977,7 @@ class Grid:
 
             Optionally a dict with separate values for each axis can be passed (see example)
         fill_value : {float, dict}, optional
-            The value to use in the boundary condition with `boundary='fill'`.
+            The value to use in the boundary condition with `padding='fill'`.
             Optionally a dict with seperate values for each axis can be passed (see example)
         vector_partner : dict, optional
             A single key (string), value (DataArray).
@@ -1000,7 +1018,7 @@ class Grid:
             The direction in which to shift the array (can be ['center','left','right','inner','outer']).
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
-        boundary : None or str or dict, optional
+        padding : None or str or dict, optional
             A flag indicating how to handle boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
@@ -1012,7 +1030,7 @@ class Grid:
 
             Optionally a dict with separate values for each axis can be passed (see example)
         fill_value : {float, dict}, optional
-            The value to use in the boundary condition with `boundary='fill'`.
+            The value to use in the boundary condition with `padding='fill'`.
             Optionally a dict with seperate values for each axis can be passed (see example)
         vector_partner : dict, optional
             A single key (string), value (DataArray).
@@ -1044,9 +1062,10 @@ class Grid:
         da: xr.DataArray,
         axis: Union[str, Iterable[str]],
         to=None,
-        boundary=None,
+        padding=None,
         fill_value=None,
         metric_weighted=None,
+        reverse=False,
         **kwargs,
     ) -> xr.DataArray:
         """
@@ -1065,7 +1084,7 @@ class Grid:
             The direction in which to shift the array (can be ['center','left','right','inner','outer']).
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
-        boundary : None or str or dict, optional
+        padding : None or str or dict, optional
             A flag indicating how to handle boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
@@ -1077,13 +1096,22 @@ class Grid:
 
             Optionally a dict with separate values for each axis can be passed (see example)
         fill_value : {float, dict}, optional
-            The value to use in the boundary condition with `boundary='fill'`.
+            The value to use in the boundary condition with `padding='fill'`.
             Optionally a dict with seperate values for each axis can be passed (see example)
         metric_weighted : str or tuple of str or dict, optional
             Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
             If `False` (default), the points will be weighted equally.
             Optionally a dict with seperate values for each axis can be passed.
+        reverse : bool or dict, optional
+            If `True`, accumulate from the high-index end of the axis toward the
+            low-index end, so that the cumulative total starts from the last
+            element rather than the first (the default, `False`, accumulates from
+            low index to high index). Implemented by flipping the data along the
+            core dimension, cumulatively summing, and flipping the result back.
+            Optionally a dict with separate values for each axis can be passed;
+            it may only name axes that appear in `axis` (a `ValueError` is raised
+            otherwise).
 
         Returns
         -------
@@ -1099,6 +1127,12 @@ class Grid:
 
         >>> grid.max(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
+        # TODO - remove deprecation handling
+        if "boundary" in kwargs:
+            raise ValueError(
+                "Argument 'boundary' has been renamed to 'padding'. "
+                "Please use 'padding' instead."
+            )
 
         # TODO - remove deprecation handling in a future release
         if "keep_coords" in kwargs:
@@ -1115,6 +1149,20 @@ class Grid:
             axis = [axis]
         to = self._map_kwargs_over_axes(to)
 
+        # `reverse` controls the accumulation direction of each axis being
+        # cumulatively summed, so it only makes sense for axes in `axis`. Reject
+        # a dict that names other axes rather than silently ignoring them, which
+        # could mislead users into thinking a non-integrated axis is reversed.
+        if isinstance(reverse, dict):
+            extra = [ax_name for ax_name in reverse if ax_name not in axis]
+            if extra:
+                raise ValueError(
+                    f"`reverse` was given for axes {extra} which are not being "
+                    f"cumulatively summed (axis={axis}). Only pass `reverse` for "
+                    f"the axes in `axis`."
+                )
+        reverse = self._map_kwargs_over_axes(reverse)
+
         if isinstance(metric_weighted, str):
             metric_weighted = (metric_weighted,)
         metric_weighted = self._map_kwargs_over_axes(metric_weighted)
@@ -1129,13 +1177,22 @@ class Grid:
             # than being clobbered by the grid's (possibly stale) copies. See #496.
             input_da = data
 
+            ax_reverse = reverse.get(ax.name, False)
+
             ax_metric_weighted = metric_weighted[ax.name]
             if ax_metric_weighted:
                 metric = self.get_metric(data, ax_metric_weighted)
                 data = data * metric
 
-            # first use xarray's cumsum method
+            # use xarray's cumsum method. When `reverse` is requested we flip the
+            # data along the core dim, accumulate, and flip back, so that the
+            # cumulative total accumulates from the high-index end of the axis
+            # toward the low-index end (see #256 / #605).
+            if ax_reverse:
+                data = data.isel(**{dim: slice(None, None, -1)})
             data = data.cumsum(dim=dim)
+            if ax_reverse:
+                data = data.isel(**{dim: slice(None, None, -1)})
 
             ax_to = to[ax.name]
             if ax_to is None:
@@ -1143,36 +1200,70 @@ class Grid:
 
             # now pad / trim the data as necessary
             # here we enumerate all the valid possible shifts
-            if (pos == "center" and ax_to == "right") or (
-                pos == "left" and ax_to == "center"
-            ):
-                # do nothing, this is the default for how cumsum works
-                ax_boundary_width = {ax.name: (0, 0)}
-            elif (pos == "center" and ax_to == "left") or (
-                pos == "right" and ax_to == "center"
-            ):
-                data = data.isel(**{dim: slice(0, -1)})
-                ax_boundary_width = {ax.name: (1, 0)}
-            elif (pos == "center" and ax_to == "inner") or (
-                pos == "outer" and ax_to == "center"
-            ):
-                data = data.isel(**{dim: slice(0, -1)})
-                ax_boundary_width = {ax.name: (0, 0)}
-            elif (pos == "center" and ax_to == "outer") or (
-                pos == "inner" and ax_to == "center"
-            ):
-                ax_boundary_width = {ax.name: (1, 0)}
+            if not ax_reverse:
+                # forward accumulation: a low->high cumsum lands naturally on the
+                # `right` position (the right cell faces), so any trimming happens
+                # at the high-index end and any padding at the low-index end.
+                if (pos == "center" and ax_to == "right") or (
+                    pos == "left" and ax_to == "center"
+                ):
+                    # do nothing, this is the default for how cumsum works
+                    ax_padding_width = {ax.name: (0, 0)}
+                elif (pos == "center" and ax_to == "left") or (
+                    pos == "right" and ax_to == "center"
+                ):
+                    data = data.isel(**{dim: slice(0, -1)})
+                    ax_padding_width = {ax.name: (1, 0)}
+                elif (pos == "center" and ax_to == "inner") or (
+                    pos == "outer" and ax_to == "center"
+                ):
+                    data = data.isel(**{dim: slice(0, -1)})
+                    ax_padding_width = {ax.name: (0, 0)}
+                elif (pos == "center" and ax_to == "outer") or (
+                    pos == "inner" and ax_to == "center"
+                ):
+                    ax_padding_width = {ax.name: (1, 0)}
+                else:
+                    raise ValueError(
+                        f"From `{pos}` to `{ax_to}` is not a valid position "
+                        f"shift for cumsum operation along axis {ax}."
+                    )
             else:
-                raise ValueError(
-                    f"From `{pos}` to `{ax_to}` is not a valid position "
-                    f"shift for cumsum operation along axis {ax}."
-                )
+                # reversed accumulation: a high->low cumsum lands naturally on the
+                # `left` position (the left cell faces). This is the mirror image
+                # of the forward case: trimming happens at the low-index end
+                # (`slice(1, None)`) and padding at the high-index end (the upper
+                # boundary_width), so the position shifts stay consistent.
+                if (pos == "center" and ax_to == "left") or (
+                    pos == "right" and ax_to == "center"
+                ):
+                    # do nothing, this is the default for a reversed cumsum
+                    ax_padding_width = {ax.name: (0, 0)}
+                elif (pos == "center" and ax_to == "right") or (
+                    pos == "left" and ax_to == "center"
+                ):
+                    data = data.isel(**{dim: slice(1, None)})
+                    ax_padding_width = {ax.name: (0, 1)}
+                elif (pos == "center" and ax_to == "inner") or (
+                    pos == "outer" and ax_to == "center"
+                ):
+                    data = data.isel(**{dim: slice(1, None)})
+                    ax_padding_width = {ax.name: (0, 0)}
+                elif (pos == "center" and ax_to == "outer") or (
+                    pos == "inner" and ax_to == "center"
+                ):
+                    ax_padding_width = {ax.name: (0, 1)}
+                else:
+                    raise ValueError(
+                        f"From `{pos}` to `{ax_to}` is not a valid position "
+                        f"shift for cumsum operation along axis {ax}."
+                    )
 
             padded = pad(
                 data=data,
                 grid=self,
-                boundary_width=ax_boundary_width,
-                boundary=boundary,
+                padding_width=ax_padding_width,
+                padding=padding,
                 fill_value=fill_value,
             )
 
@@ -1186,7 +1277,7 @@ class Grid:
             reattached = _reattach_coords(
                 [coordless],
                 grid=self,
-                boundary_width=ax_boundary_width,
+                padding_width=ax_padding_width,
                 # The only newly position-shifted (core) dim is the result dim;
                 # its coordinate must come from the grid. Coordinates on all other
                 # (non-core) dims should be preserved from the input array. #496.
@@ -1293,18 +1384,18 @@ class Grid:
         to : {'center', 'left', 'right', 'inner', 'outer'}
             The direction in which to shift the array. If not specified,
             default will be used.
-        boundary : {None, 'fill', 'extend'}
-            A flag indicating how to handle boundaries:
+        padding : {None, 'fill', 'extend'}
+            A flag indicating how to handle padding:
 
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
+            * None:  Do not apply any padding conditions. Raise an error if
+              padding conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
               (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
               value. (i.e. a limited form of Neumann boundary condition.)
 
         fill_value : float, optional
-            The value to use in the boundary condition with `boundary='fill'`.
+            The value to use in the boundary condition with `padding='fill'`.
         vector_partner : dict, optional
             A single key (string), value (DataArray)
 
@@ -1331,7 +1422,7 @@ class Grid:
             The direction in which to shift the array (can be ['center','left','right','inner','outer']).
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
-        boundary : None or str or dict, optional
+        padding : None or str or dict, optional
             A flag indicating how to handle boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
@@ -1343,7 +1434,7 @@ class Grid:
 
             Optionally a dict with separate values for each axis can be passed (see example)
         fill_value : {float, dict}, optional
-            The value to use in the boundary condition with `boundary='fill'`.
+            The value to use in the boundary condition with `padding='fill'`.
             Optionally a dict with seperate values for each axis can be passed (see example)
         vector_partner : dict, optional
             A single key (string), value (DataArray).
@@ -1405,7 +1496,7 @@ class Grid:
             The direction in which to shift the array (can be ['center','left','right','inner','outer']).
             If not specified, default will be used.
             Optionally a dict with separate values for each axis can be passed (see example)
-        boundary : None or str or dict, optional
+        padding : None or str or dict, optional
             A flag indicating how to handle boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
@@ -1417,13 +1508,21 @@ class Grid:
 
             Optionally a dict with separate values for each axis can be passed.
         fill_value : {float, dict}, optional
-            The value to use in the boundary condition with `boundary='fill'`.
+            The value to use in the boundary condition with `padding='fill'`.
             Optionally a dict with separate values for each axis can be passed.
         metric_weighted : str or tuple of str or dict, optional
             Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
             If `False` (default), the points will be weighted equally.
             Optionally a dict with seperate values for each axis can be passed.
+        reverse : bool or dict, optional
+            If `True`, accumulate from the high-index end of the axis toward the
+            low-index end, so that the cumulative integral starts from the last
+            element rather than the first (the default, `False`, accumulates from
+            low index to high index). Forwarded to :meth:`Grid.cumsum`.
+            Optionally a dict with separate values for each axis can be passed;
+            it may only name axes that appear in `axis` (a `ValueError` is raised
+            otherwise).
 
         Returns
         -------
@@ -1585,7 +1684,7 @@ def _select_grid_ufunc(funcname, signature: _GridUFuncSignature, module, **kwarg
     all_kwargs = kwargs.copy()
     # boundary = kwargs.pop("boundary", None)
     # if boundary:
-    #    matching_ufuncs = [uf for uf in matching_ufuncs if uf.boundary == boundary]
+    #    matching_ufuncs = [uf for uf in matching_ufuncs if uf.padding == padding]
 
     if len(matching_ufuncs) > 1:
         # TODO include kwargs used to match in this error message

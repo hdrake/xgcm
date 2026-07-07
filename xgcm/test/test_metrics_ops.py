@@ -20,11 +20,11 @@ from xgcm.test.datasets import datasets_grid_metric
 @pytest.mark.parametrize("grid_type", ["B", "C"])
 @pytest.mark.parametrize("variable", ["tracer", "u", "v"])
 @pytest.mark.parametrize("metric_weighted", ["X", ("Y",), ("X", "Y"), ["X", "Y"]])
-@pytest.mark.parametrize("boundary", ["fill", "extend"])
+@pytest.mark.parametrize("padding", ["fill", "extend"])
 class TestParametrized:
     @pytest.mark.parametrize("axis", ["X", "Y"])
     @pytest.mark.parametrize(
-        "boundary_init",
+        "padding_init",
         [
             "fill",
             "periodic",
@@ -39,8 +39,8 @@ class TestParametrized:
         variable,
         axis,
         metric_weighted,
-        boundary_init,
-        boundary,
+        padding_init,
+        padding,
     ):
         """tests the correct execution of weighted ops along a single axis"""
         # metric_weighted allows the interpolation of e.g. a surface flux to be conservative
@@ -51,23 +51,23 @@ class TestParametrized:
             ds,
             coords=coords,
             metrics=metrics,
-            boundary=boundary_init,
+            padding=padding_init,
             autoparse_metadata=False,
         )
         func = getattr(grid, funcname)
 
         metric = grid.get_metric(ds[variable], metric_weighted)
-        expected_raw = func(ds[variable] * metric, axis, boundary=boundary)
+        expected_raw = func(ds[variable] * metric, axis, padding=padding)
         metric_new = grid.get_metric(expected_raw, metric_weighted)
         expected = expected_raw / metric_new
         new = func(
-            ds[variable], axis, metric_weighted=metric_weighted, boundary=boundary
+            ds[variable], axis, metric_weighted=metric_weighted, padding=padding
         )
         assert new.equals(expected)
 
     @pytest.mark.parametrize("multi_axis", ["X", ["X"], ("Y"), ["X", "Y"], ("Y", "X")])
     def test_weighted_metric_multi_axis(
-        self, funcname, grid_type, variable, multi_axis, metric_weighted, boundary
+        self, funcname, grid_type, variable, multi_axis, metric_weighted, padding
     ):
         """tests if the output for multiple axis is the same as when
         executing the single axis ops in serial"""
@@ -85,14 +85,14 @@ class TestParametrized:
                 expected,
                 ax,
                 metric_weighted=metric_weighted_axis,
-                boundary=boundary,
+                padding=padding,
             )
 
         new = func(
             ds[variable],
             multi_axis,
             metric_weighted=metric_weighted,
-            boundary=boundary,
+            padding=padding,
         )
         assert new.equals(expected)
 
@@ -166,7 +166,7 @@ class TestDerivatives:
                 "Y": {"center": "YC", "left": "YG"},
             },
             metrics={("X",): ["dXC", "dXG"], ("Y",): ["dYC", "dYG"]},
-            boundary="periodic",
+            padding="periodic",
             autoparse_metadata=False,
         )
 
@@ -188,7 +188,7 @@ class TestDerivatives:
             ds,
             coords=coords,
             metrics=metrics,
-            boundary="periodic",
+            padding="periodic",
             autoparse_metadata=False,
         )
 
@@ -225,7 +225,7 @@ class TestDerivatives:
             ds,
             coords=coords,
             metrics=metrics,
-            boundary="periodic",
+            padding="periodic",
             autoparse_metadata=False,
         )
 
@@ -255,23 +255,23 @@ class TestDerivatives:
             _run_single_derivative_test(grid, ax, ds[var], ds[dx])
 
 
-def _expected_result(da, metric, grid, dim, axes, funcname, boundary=None):
+def _expected_result(da, metric, grid, dim, axes, funcname, padding=None):
     """this is factoring out the expected output of metric aware operations"""
     if funcname == "integrate":
         expected = (da * metric).sum(dim)
     elif funcname == "average":
         expected = (da * metric).sum(dim) / metric.sum(dim)
     elif funcname == "cumint":
-        expected = grid.cumsum(da * metric, axes, boundary=boundary)
+        expected = grid.cumsum(da * metric, axes, padding=padding)
     else:
         raise ValueError(f"funcname {funcname} not recognized")
     return expected
 
 
 @pytest.mark.parametrize("funcname", ["integrate", "average", "cumint"])
-@pytest.mark.parametrize("boundary", ["fill", "extend"])
+@pytest.mark.parametrize("padding", ["fill", "extend"])
 @pytest.mark.parametrize(
-    "boundary_init",
+    "padding_init",
     [
         "fill",
         "periodic",
@@ -280,21 +280,21 @@ def _expected_result(da, metric, grid, dim, axes, funcname, boundary=None):
     ],
 )
 class TestDifferentGridPositionsParametrized:
-    def test_bgrid(self, funcname, boundary, boundary_init):
+    def test_bgrid(self, funcname, padding, padding_init):
         ds, coords, metrics = datasets_grid_metric("B")
         grid = Grid(
             ds,
             coords=coords,
             metrics=metrics,
-            boundary=boundary_init,
+            padding=padding_init,
             autoparse_metadata=False,
         )
 
         if funcname == "cumint":
-            # cumint needs a boundary
-            kwargs = dict(boundary=boundary)
+            # cumint needs a padding
+            kwargs = dict(padding=padding)
         else:
-            # integrate and average don't use the boundary input
+            # integrate and average don't use the padding input
             kwargs = dict()
 
         func = getattr(grid, funcname)
@@ -340,21 +340,21 @@ class TestDifferentGridPositionsParametrized:
             )
             assert_allclose(new, expected)
 
-    def test_cgrid(self, funcname, boundary, boundary_init):
+    def test_cgrid(self, funcname, padding, padding_init):
         ds, coords, metrics = datasets_grid_metric("C")
         grid = Grid(
             ds,
             coords=coords,
             metrics=metrics,
-            boundary=boundary_init,
+            padding=padding_init,
             autoparse_metadata=False,
         )
 
         if funcname == "cumint":
-            # cumint needs a boundary
-            kwargs = dict(boundary=boundary)
+            # cumint needs a padding
+            kwargs = dict(padding=padding)
         else:
-            # integrate and average don't use the boundary input
+            # integrate and average don't use the padding input
             kwargs = dict()
 
         func = getattr(grid, funcname)
@@ -400,7 +400,7 @@ class TestDifferentGridPositionsParametrized:
             assert_allclose(new, expected)
 
     @pytest.mark.parametrize("axis", ["X", "Y", "Z"])
-    def test_missingaxis(self, axis, funcname, boundary_init, boundary):
+    def test_missingaxis(self, axis, funcname, padding_init, padding):
         # Error should be raised if application axes include dimension not in datasets
 
         ds, coords, metrics = datasets_grid_metric("C")
@@ -408,9 +408,9 @@ class TestDifferentGridPositionsParametrized:
         # delete all extraneous kwargs from fixture
         # TODO simplify parametrization so this isn't necessary
         del coords[axis]
-        if isinstance(boundary_init, dict) and axis in boundary_init:
+        if isinstance(padding_init, dict) and axis in padding_init:
             # copy so we don't mutate the shared parametrized dict
-            boundary_init = {k: v for k, v in boundary_init.items() if k != axis}
+            padding_init = {k: v for k, v in padding_init.items() if k != axis}
         del_metrics = [k for k in metrics.keys() if axis in k]
         for dm in del_metrics:
             del metrics[dm]
@@ -419,15 +419,15 @@ class TestDifferentGridPositionsParametrized:
             ds,
             coords=coords,
             metrics=metrics,
-            boundary=boundary_init,
+            padding=padding_init,
             autoparse_metadata=False,
         )
 
         func = getattr(grid, funcname)
 
         if funcname == "cumint":
-            # cumint needs a boundary
-            kwargs = dict(boundary=boundary)
+            # cumint needs a padding
+            kwargs = dict(padding=padding)
         else:
             kwargs = dict()
 
@@ -446,8 +446,8 @@ class TestDifferentGridPositionsParametrized:
             func = getattr(grid, funcname)
 
             if funcname == "cumint":
-                # cumint needs a boundary
-                kwargs = dict(boundary="fill")
+                # cumint needs a padding
+                kwargs = dict(padding="fill")
             else:
                 kwargs = dict()
 
@@ -457,19 +457,19 @@ class TestDifferentGridPositionsParametrized:
             with pytest.raises(KeyError, match="Did not find axis"):
                 func(ds.tracer, ("X", "Y"), **kwargs)
 
-    def test_metric_axes_missing_from_array(self, funcname, boundary_init, boundary):
+    def test_metric_axes_missing_from_array(self, funcname, padding_init, padding):
         ds, coords, metrics = datasets_grid_metric("C")
         grid = Grid(
             ds,
             coords=coords,
             metrics=metrics,
-            boundary=boundary_init,
+            padding=padding_init,
             autoparse_metadata=False,
         )
 
         if funcname == "cumint":
-            # cumint needs a boundary
-            kwargs = dict(boundary="fill")
+            # cumint needs a padding
+            kwargs = dict(padding="fill")
         else:
             kwargs = dict()
 
