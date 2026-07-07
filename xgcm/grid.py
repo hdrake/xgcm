@@ -462,6 +462,21 @@ class Grid:
                 "other."
             )
 
+        # NOTE: The north-fold (tripolar) boundary is still experimental. Warn
+        # once at construction so users know its API and numerical behavior may
+        # change and that it has not yet been validated across every grid
+        # configuration. See the "experimental" admonition in
+        # docs/grid_topology.md.
+        if self._folds:
+            warnings.warn(
+                "The north-fold (tripolar) boundary condition is experimental. "
+                "Its API and numerical behavior may change in future releases, "
+                "and it has not yet been validated across the full range of grid "
+                "configurations. Please review results carefully and report any "
+                "issues at https://github.com/xgcm/xgcm/issues.",
+                category=UserWarning,
+            )
+
     def set_metrics(self, key, value, overwrite=False):
         metric_axes = frozenset(_maybe_promote_str_to_list(key))
         axes_not_found = [ma for ma in metric_axes if ma not in self.axes]

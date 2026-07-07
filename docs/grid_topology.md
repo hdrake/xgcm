@@ -215,6 +215,14 @@ left to left, or right to right.
 
 ## The Bipolar North Fold (Tripolar Grids) {#north-fold}
 
+!!! warning "Experimental"
+    The north fold is **experimental**. Its API (how the fold pivot and seam
+    are declared) and its numerical behavior may change in future releases, and
+    it has not yet been validated across the full range of grid configurations
+    and models. Constructing a `Grid` with a fold boundary emits a
+    `UserWarning` to this effect. Please check results carefully and report any
+    issues on the [issue tracker](https://github.com/xgcm/xgcm/issues).
+
 Many global ocean models (MOM6/OM4, NEMO/ORCA, MOM5, Oceananigans) avoid the
 coordinate singularity at the geographic North Pole by displacing it onto land
 and pairing it with a second displaced pole. Such grids are called **tripolar**:

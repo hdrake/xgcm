@@ -5,7 +5,8 @@
 
 ### New Features
 
-- Add a bipolar north-fold boundary condition for tripolar ocean grids (MOM6, NEMO, MOM5,
+- Add an **experimental** bipolar north-fold boundary condition for tripolar ocean grids
+  (MOM6, NEMO, MOM5,
   Oceananigans), requested as a per-axis boundary on the fold axis, e.g.
   `boundary={"X": "periodic", "Y": {"fold": "corner"}}`. The northern edge of the logical grid
   folds onto itself along the bipolar seam joining the two northern poles: the zonal axis is
@@ -13,7 +14,9 @@
   work across the Arctic seam. The pivot (`center`/`T`, `corner`/`F`, `U`, `V`) names the
   staggered position the pole sits on. Only the north edge folds; the south edge of a fold
   axis honours a per-call `boundary` override when given, otherwise a configurable `south`
-  mode (default `fill`) ([#194](https://github.com/xgcm/xgcm/issues/194),
+  mode (default `fill`). This feature is experimental: its API and numerical behavior may
+  change, and constructing a `Grid` with a fold emits a `UserWarning`
+  ([#194](https://github.com/xgcm/xgcm/issues/194),
   [#711](https://github.com/xgcm/xgcm/pull/711)).
   By [Henri Drake](https://github.com/hdrake).
 

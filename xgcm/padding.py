@@ -22,6 +22,11 @@ _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG = {
 # ---------------------------------------------------------------------------
 # Bipolar north-fold boundary
 # ---------------------------------------------------------------------------
+# EXPERIMENTAL: the north fold is a new, still-experimental feature. The pivot
+# resolution and halo-filling kernels below, and the boundary API they back, may
+# change in future releases and have not yet been validated across every grid
+# configuration. `Grid.__init__` emits a `UserWarning` when a fold is declared.
+#
 # A "fold" boundary expresses the bipolar north fold of a tripolar ocean grid
 # (MOM6, NEMO, MOM5, Oceananigans). Such grids are *tripolar* -- they carry three
 # singularities: the ordinary South Pole plus two poles displaced over Arctic
