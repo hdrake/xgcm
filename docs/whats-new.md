@@ -52,7 +52,8 @@
   core dependencies, testing across the standard grid topologies, EffVer). It
   complements rather than duplicates the human contributor guide, which gains a
   *Pull request guidelines* section covering PR conventions, changelog
-  discipline, and AI-assistance disclosure.
+  discipline, and AI-assistance disclosure
+  ([#755](https://github.com/xgcm/xgcm/pull/755)).
   By [Henri Drake](https://github.com/hdrake).
 
 - Reword the "Metrics" note in `grid_ufuncs.md` to a stable, non-promissory statement: metrics are
