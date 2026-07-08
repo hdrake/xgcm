@@ -57,8 +57,10 @@ The public API is the `Grid` class plus two decorators (`apply_as_grid_ufunc`,
 ## Engineering norms
 
 Follow these when changing xgcm's code. (Contribution *mechanics* — PR
-conventions, the changelog, AI-assistance disclosure — are under *Pull request
-guidelines* in the [contributor guide](docs/contributor_guide.md).)
+conventions and the changelog — are under *Pull request guidelines* in the
+[contributor guide](docs/contributor_guide.md); the person running the AI is
+responsible for every change under its *AI Usage Policy*, which requires
+disclosing AI assistance and being able to explain the diff.)
 
 1. **Deprecate by removing, not warning.** When you rename or remove public API,
    do not keep the old name working behind a `DeprecationWarning` across
