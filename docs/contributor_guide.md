@@ -6,7 +6,7 @@ contributions.
 Did you notice a bug? Are you missing a feature? A good first starting place is to
 open an issue in the [github issues page](https://github.com/xgcm/xgcm/issues).
 
-Want to show off a cool example using xgcm? Please consider contributing to [xgcm-examples](https://github.com/xgcm/xgcm-examples). Notebooks from there will be rendered in [pangeo-gallery](https://gallery.pangeo.io/repos/xgcm/xgcm-examples/).
+Want to show off a cool example using xgcm? Please consider contributing to [xgcm-examples](https://github.com/xgcm/xgcm-examples).
 
 
 In order to contribute to xgcm, please fork the repository and submit a pull request.
@@ -64,6 +64,15 @@ pixi run notebooks
 
 This launches Jupyter Lab rooted at the `docs` folder.
 
+## Documentation {#documentation}
+
+The docs are the primary way new users learn about xgcm, so keep them as simple and
+clear as possible, and build every example on a publicly available dataset so that
+anyone can reproduce its output locally. The more advanced, comprehensive, or
+big-data examples — illustrating real use cases of xgcm's features on the
+ocean-model configurations and datasets commonly used in the community — live in
+[xgcm-examples](https://github.com/xgcm/xgcm-examples) rather than in the core docs.
+
 ## Pull request guidelines {#pull-request-guidelines}
 
 A few conventions keep changes easy to review and release:
@@ -78,6 +87,10 @@ A few conventions keep changes easy to review and release:
   `By [Your Name](https://github.com/yourhandle).` New public functions or
   methods also go in `docs/api.md`. This is the single most common thing
   reviewers ask contributors to add.
+- **Keep the built docs in sync.** A breaking change, or any change that alters the
+  rendered output of the built `.md` docs or the executed `.ipynb` notebooks
+  (`docs/transform.ipynb`, `docs/grid_metrics.ipynb`), must update those files in
+  the same PR so the published [documentation](#documentation) still reproduces.
 - **Follow the [AI Usage Policy](#ai-usage-policy).** AI-assisted contributions
   are welcome, but you must be able to explain every change and disclose the
   assistance openly — a `Co-Authored-By:` trailer on commits, and a note on any
@@ -158,14 +171,9 @@ comments that violate it.
 
 ### Documentation
 
-The same principles apply to documentation, and you are ultimately responsible for
-everything you submit. The docs are the primary way new users learn about xgcm, so
-keep them as simple and clear as possible, and build every example on a publicly
-available dataset so that anyone can reproduce its output locally. The more
-advanced, comprehensive, or big-data examples — illustrating real use cases of
-xgcm's features on the ocean-model configurations and datasets commonly used in the
-community — live in [xgcm-examples](https://github.com/xgcm/xgcm-examples) rather
-than in the core docs.
+These principles apply equally to documentation: review everything you submit and
+be able to stand behind it. See [Documentation](#documentation) above for what
+xgcm's docs should aim for.
 
 ## Versioning policy
 
