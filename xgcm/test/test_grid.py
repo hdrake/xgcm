@@ -383,6 +383,33 @@ def test_declared_nonperiodic_axis_does_not_wrap():
     np.testing.assert_allclose(diff_fill.isel(XG=0).values, ds.data_c.isel(XC=0).values)
 
 
+def test_cumsum_nonperiodic_does_not_wrap():
+    """Regression test for GH #625: ``cumsum`` must not silently apply periodic
+    boundaries when the axis is non-periodic. With no boundary condition it must
+    raise instead of wrapping; with ``boundary='fill'`` (fill_value 0) it should
+    integrate from zero, i.e. ``[0, 1, 3, 6, ...]``."""
+    ds = xr.Dataset(
+        coords={
+            "zl": (["zl"], np.arange(1.0, 15.0)),
+            "zi": (["zi"], np.arange(0.5, 15.5)),
+        }
+    )
+    coords = {"Z": {"center": "zl", "outer": "zi"}}
+
+    # No boundary specified: cumsum needs to pad, so it must raise rather than
+    # silently wrapping (the pre-1.0 behavior that produced the #625 bug).
+    grid = Grid(ds, coords=coords, autoparse_metadata=False)
+    with pytest.raises(ValueError, match="No boundary condition was specified"):
+        grid.cumsum(ds.zl, "Z")
+
+    # With an explicit 'fill' boundary the integration starts from 0 and
+    # increases monotonically (no wrap-around contaminating the first value).
+    grid_fill = Grid(ds, coords=coords, boundary="fill", autoparse_metadata=False)
+    result = grid_fill.cumsum(ds.zl, "Z", boundary="fill", fill_value=0.0)
+    expected = np.hstack([0.0, np.cumsum(ds.zl.data)])
+    np.testing.assert_allclose(result.data, expected)
+
+
 def test_invalid_fill_value_error():
     ds = datasets["1d_left"]
     ds, grid_kwargs = parse_comodo(ds)
@@ -453,7 +480,7 @@ def test_keep_coords_removed():
     ds, coords, metrics = datasets_grid_metric("B")
     ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
     grid = Grid(
-        ds, coords=coords, metrics=metrics, boundary="fill", autoparse_metadata=False
+        ds, coords=coords, metrics=metrics, boundary="periodic", autoparse_metadata=False
     )
     for axis_name in grid.axes.keys():
         with pytest.raises(ValueError, match="has been removed"):

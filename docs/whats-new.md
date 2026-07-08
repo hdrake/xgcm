@@ -27,10 +27,11 @@
   closes [#195](https://github.com/xgcm/xgcm/issues/195),
   [#509](https://github.com/xgcm/xgcm/issues/509),
   [#604](https://github.com/xgcm/xgcm/issues/604),
-  [#624](https://github.com/xgcm/xgcm/issues/624);
-  supersedes [#626](https://github.com/xgcm/xgcm/pull/626))
+  [#624](https://github.com/xgcm/xgcm/issues/624),
+  [#625](https://github.com/xgcm/xgcm/issues/625))
   By [Henri Drake](https://github.com/hdrake).
-  Supersedes earlier work by [Julius Busecke](https://github.com/jbusecke) in #626.
+  Supersedes earlier work by [Julius Busecke](https://github.com/jbusecke) in
+  [#626](https://github.com/xgcm/xgcm/pull/626).
 
 - Removed the deprecated `keep_coords` keyword argument from grid operations
   (`Grid.interp`, `Grid.diff`, `Grid.min`, `Grid.max`, `Grid.cumsum`, etc.) and from

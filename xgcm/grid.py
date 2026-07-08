@@ -875,7 +875,8 @@ class Grid:
         --------
         Each keyword argument can be provided as a `per-axis` dictionary. For instance,
         if a global 2D dataset should be interpolated on both X and Y axis, but it is
-        only periodic in the X axis, we can do this:
+        only periodic in the X axis (and should be padded along the Y axis), we can
+        do this:
 
         >>> grid.interp(da, ["X", "Y"], boundary={"X": "periodic", "Y": "fill"})
         """
