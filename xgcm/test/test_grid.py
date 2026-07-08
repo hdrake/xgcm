@@ -480,7 +480,11 @@ def test_keep_coords_removed():
     ds, coords, metrics = datasets_grid_metric("B")
     ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
     grid = Grid(
-        ds, coords=coords, metrics=metrics, boundary="periodic", autoparse_metadata=False
+        ds,
+        coords=coords,
+        metrics=metrics,
+        boundary="periodic",
+        autoparse_metadata=False,
     )
     for axis_name in grid.axes.keys():
         with pytest.raises(ValueError, match="has been removed"):
