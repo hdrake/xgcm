@@ -158,10 +158,14 @@ comments that violate it.
 
 ### Documentation
 
-The same principles apply to documentation. AI tools frequently get xgcm's
-domain-specific semantics — Arakawa grid positions, metrics, boundary handling —
-wrong, so review every generated line for accuracy. You are ultimately responsible
-for everything you submit.
+The same principles apply to documentation, and you are ultimately responsible for
+everything you submit. The docs are the primary way new users learn about xgcm, so
+keep them as simple and clear as possible, and build every example on a publicly
+available dataset so that anyone can reproduce its output locally. The more
+advanced, comprehensive, or big-data examples — illustrating real use cases of
+xgcm's features on the ocean-model configurations and datasets commonly used in the
+community — live in [xgcm-examples](https://github.com/xgcm/xgcm-examples) rather
+than in the core docs.
 
 ## Versioning policy
 
