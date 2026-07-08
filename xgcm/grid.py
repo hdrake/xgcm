@@ -493,7 +493,23 @@ class Grid:
                     metric_vars = mv
                     break
             if metric_vars is None:
-                # Condition 2: interpolate metric with matching axis to desired dimensions
+                # Condition 2: a metric is registered under exactly these axes but
+                # not at the array's position, so interpolate it onto that position.
+                #
+                # This deliberately takes priority over Condition 3 below (building
+                # the metric by multiplying separately-registered sub-axis metrics,
+                # e.g. dx * dy). On curvilinear grids the true cell area/volume is
+                # generally not the product of the 1-D widths (area != dx * dy): an
+                # explicitly-registered exact-axes metric encodes that true geometry,
+                # so interpolating it preserves the curvature information at the cost
+                # of some interpolation error, whereas a sub-axis product would
+                # silently assume separability and discard it. An exact-axes metric
+                # is therefore preferred even when it must be interpolated; sub-axis
+                # composition (Condition 3) is only reached when no metric is
+                # registered under these exact axes at all. The warning below flags
+                # that interpolation occurred, so a user who would rather compose
+                # from exact-position widths can register those widths without an
+                # exact-axes area/volume metric. See GH #759.
                 warnings.warn(
                     f"Metric at {array.dims} being interpolated from metrics at dimensions {mv.dims}. Boundary value set to 'extend'."
                 )
