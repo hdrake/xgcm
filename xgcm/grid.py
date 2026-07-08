@@ -492,44 +492,86 @@ class Grid:
                     metric_vars = mv
                     break
             if metric_vars is None:
-                # Condition 2: interpolate metric with matching axis to desired dimensions
+                # Condition 2: a metric is registered under exactly these axes but
+                # not at the array's position, so interpolate it onto that position.
+                #
+                # This deliberately takes priority over Condition 3 below (building
+                # the metric by multiplying separately-registered sub-axis metrics,
+                # e.g. dx * dy). On curvilinear grids the true cell area/volume is
+                # generally not the product of the 1-D widths (area != dx * dy): an
+                # explicitly-registered exact-axes metric encodes that true geometry,
+                # so interpolating it preserves the curvature information at the cost
+                # of some interpolation error, whereas a sub-axis product would
+                # silently assume separability and discard it. An exact-axes metric
+                # is therefore preferred even when it must be interpolated; sub-axis
+                # composition (Condition 3) is only reached when no metric is
+                # registered under these exact axes at all. The warning below flags
+                # that interpolation occurred, so a user who would rather compose
+                # from exact-position widths can register those widths without an
+                # exact-axes area/volume metric. See GH #759.
                 warnings.warn(
                     f"Metric at {array.dims} being interpolated from metrics at dimensions {mv.dims}. Boundary value set to 'extend'."
                 )
                 metric_vars = self.interp_like(mv, array, "extend", None)
         else:
+            # Search ALL candidate axis combinations for an exact-position match
+            # (Condition 3) before considering interpolation (Condition 4).
+            # Otherwise, position-mismatched combinations iterated before the
+            # exact one would emit spurious "being interpolated" warnings even
+            # though an exact-position metric exists (GH #756).
+            #
+            # `interp_fallback` records the combination to interpolate if NO
+            # exact-position combination exists for any candidate. To keep
+            # existing interpolation results (e.g. test_get_metric_with_
+            # conditions_04*) unchanged, it deliberately mirrors the pre-fix
+            # selection: the LAST product combination of the FIRST candidate
+            # whose metrics are all present. Once that first present candidate
+            # has been fully scanned without an exact match, the fallback is
+            # locked so later candidates cannot overwrite it.
+            interp_fallback = None
+            interp_fallback_locked = False
             for axis_combinations in iterate_axis_combinations(axes):
                 try:
                     # will raise KeyError if the axis combination is not in metrics
                     possible_metric_vars = [
                         self._metrics[ac] for ac in axis_combinations
                     ]
-                    for possible_combinations in itertools.product(
-                        *possible_metric_vars
-                    ):
-                        metric_dims = set(
-                            [d for mv in possible_combinations for d in mv.dims]
-                        )
-                        if metric_dims.issubset(array_dims):
-                            # Condition 3: use provided metrics with matching dimensions to calculate for required metric
-                            metric_vars = possible_combinations
-                            break
-                        else:
-                            # Condition 4: metrics in the wrong position (must interpolate before multiplying)
-                            possible_dims = [pc.dims for pc in possible_combinations]
-                            warnings.warn(
-                                f"Metric at {array.dims} being interpolated from metrics at dimensions {possible_dims}. Boundary value set to 'extend'."
-                            )
-                            metric_vars = tuple(
-                                self.interp_like(pc, array, "extend", None)
-                                for pc in possible_combinations
-                            )
-                    if metric_vars is not None:
-                        # return the product of the metrics
-                        metric_vars = functools.reduce(operator.mul, metric_vars, 1)
-                        break
                 except KeyError:
-                    pass
+                    continue
+                for possible_combinations in itertools.product(*possible_metric_vars):
+                    metric_dims = set(
+                        [d for mv in possible_combinations for d in mv.dims]
+                    )
+                    if metric_dims.issubset(array_dims):
+                        # Condition 3: use provided metrics with matching
+                        # dimensions to calculate the required metric.
+                        metric_vars = functools.reduce(
+                            operator.mul, possible_combinations, 1
+                        )
+                        break
+                    if not interp_fallback_locked:
+                        interp_fallback = possible_combinations
+                if metric_vars is not None:
+                    break
+                # Only the first present candidate seeds the interpolation
+                # fallback (see comment above).
+                interp_fallback_locked = True
+
+            if metric_vars is None and interp_fallback is not None:
+                # Condition 4: no exact-position combination exists anywhere, so
+                # interpolate the fallback metrics (warning exactly once).
+                possible_dims = [pc.dims for pc in interp_fallback]
+                warnings.warn(
+                    f"Metric at {array.dims} being interpolated from metrics at dimensions {possible_dims}. Boundary value set to 'extend'."
+                )
+                metric_vars = functools.reduce(
+                    operator.mul,
+                    tuple(
+                        self.interp_like(pc, array, "extend", None)
+                        for pc in interp_fallback
+                    ),
+                    1,
+                )
         if metric_vars is None:
             raise KeyError(
                 f"Unable to find any combinations of metrics for array dims {array_dims!r} and axes {axes!r}"
@@ -1048,6 +1090,7 @@ class Grid:
         boundary=None,
         fill_value=None,
         metric_weighted=None,
+        reverse=False,
         **kwargs,
     ) -> xr.DataArray:
         """
@@ -1085,6 +1128,15 @@ class Grid:
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
             If `False` (default), the points will be weighted equally.
             Optionally a dict with seperate values for each axis can be passed.
+        reverse : bool or dict, optional
+            If `True`, accumulate from the high-index end of the axis toward the
+            low-index end, so that the cumulative total starts from the last
+            element rather than the first (the default, `False`, accumulates from
+            low index to high index). Implemented by flipping the data along the
+            core dimension, cumulatively summing, and flipping the result back.
+            Optionally a dict with separate values for each axis can be passed;
+            it may only name axes that appear in `axis` (a `ValueError` is raised
+            otherwise).
 
         Returns
         -------
@@ -1116,6 +1168,20 @@ class Grid:
             axis = [axis]
         to = self._map_kwargs_over_axes(to)
 
+        # `reverse` controls the accumulation direction of each axis being
+        # cumulatively summed, so it only makes sense for axes in `axis`. Reject
+        # a dict that names other axes rather than silently ignoring them, which
+        # could mislead users into thinking a non-integrated axis is reversed.
+        if isinstance(reverse, dict):
+            extra = [ax_name for ax_name in reverse if ax_name not in axis]
+            if extra:
+                raise ValueError(
+                    f"`reverse` was given for axes {extra} which are not being "
+                    f"cumulatively summed (axis={axis}). Only pass `reverse` for "
+                    f"the axes in `axis`."
+                )
+        reverse = self._map_kwargs_over_axes(reverse)
+
         if isinstance(metric_weighted, str):
             metric_weighted = (metric_weighted,)
         metric_weighted = self._map_kwargs_over_axes(metric_weighted)
@@ -1130,13 +1196,22 @@ class Grid:
             # than being clobbered by the grid's (possibly stale) copies. See #496.
             input_da = data
 
+            ax_reverse = reverse.get(ax.name, False)
+
             ax_metric_weighted = metric_weighted[ax.name]
             if ax_metric_weighted:
                 metric = self.get_metric(data, ax_metric_weighted)
                 data = data * metric
 
-            # first use xarray's cumsum method
+            # use xarray's cumsum method. When `reverse` is requested we flip the
+            # data along the core dim, accumulate, and flip back, so that the
+            # cumulative total accumulates from the high-index end of the axis
+            # toward the low-index end (see #256 / #605).
+            if ax_reverse:
+                data = data.isel(**{dim: slice(None, None, -1)})
             data = data.cumsum(dim=dim)
+            if ax_reverse:
+                data = data.isel(**{dim: slice(None, None, -1)})
 
             ax_to = to[ax.name]
             if ax_to is None:
@@ -1144,30 +1219,64 @@ class Grid:
 
             # now pad / trim the data as necessary
             # here we enumerate all the valid possible shifts
-            if (pos == "center" and ax_to == "right") or (
-                pos == "left" and ax_to == "center"
-            ):
-                # do nothing, this is the default for how cumsum works
-                ax_boundary_width = {ax.name: (0, 0)}
-            elif (pos == "center" and ax_to == "left") or (
-                pos == "right" and ax_to == "center"
-            ):
-                data = data.isel(**{dim: slice(0, -1)})
-                ax_boundary_width = {ax.name: (1, 0)}
-            elif (pos == "center" and ax_to == "inner") or (
-                pos == "outer" and ax_to == "center"
-            ):
-                data = data.isel(**{dim: slice(0, -1)})
-                ax_boundary_width = {ax.name: (0, 0)}
-            elif (pos == "center" and ax_to == "outer") or (
-                pos == "inner" and ax_to == "center"
-            ):
-                ax_boundary_width = {ax.name: (1, 0)}
+            if not ax_reverse:
+                # forward accumulation: a low->high cumsum lands naturally on the
+                # `right` position (the right cell faces), so any trimming happens
+                # at the high-index end and any padding at the low-index end.
+                if (pos == "center" and ax_to == "right") or (
+                    pos == "left" and ax_to == "center"
+                ):
+                    # do nothing, this is the default for how cumsum works
+                    ax_boundary_width = {ax.name: (0, 0)}
+                elif (pos == "center" and ax_to == "left") or (
+                    pos == "right" and ax_to == "center"
+                ):
+                    data = data.isel(**{dim: slice(0, -1)})
+                    ax_boundary_width = {ax.name: (1, 0)}
+                elif (pos == "center" and ax_to == "inner") or (
+                    pos == "outer" and ax_to == "center"
+                ):
+                    data = data.isel(**{dim: slice(0, -1)})
+                    ax_boundary_width = {ax.name: (0, 0)}
+                elif (pos == "center" and ax_to == "outer") or (
+                    pos == "inner" and ax_to == "center"
+                ):
+                    ax_boundary_width = {ax.name: (1, 0)}
+                else:
+                    raise ValueError(
+                        f"From `{pos}` to `{ax_to}` is not a valid position "
+                        f"shift for cumsum operation along axis {ax}."
+                    )
             else:
-                raise ValueError(
-                    f"From `{pos}` to `{ax_to}` is not a valid position "
-                    f"shift for cumsum operation along axis {ax}."
-                )
+                # reversed accumulation: a high->low cumsum lands naturally on the
+                # `left` position (the left cell faces). This is the mirror image
+                # of the forward case: trimming happens at the low-index end
+                # (`slice(1, None)`) and padding at the high-index end (the upper
+                # boundary_width), so the position shifts stay consistent.
+                if (pos == "center" and ax_to == "left") or (
+                    pos == "right" and ax_to == "center"
+                ):
+                    # do nothing, this is the default for a reversed cumsum
+                    ax_boundary_width = {ax.name: (0, 0)}
+                elif (pos == "center" and ax_to == "right") or (
+                    pos == "left" and ax_to == "center"
+                ):
+                    data = data.isel(**{dim: slice(1, None)})
+                    ax_boundary_width = {ax.name: (0, 1)}
+                elif (pos == "center" and ax_to == "inner") or (
+                    pos == "outer" and ax_to == "center"
+                ):
+                    data = data.isel(**{dim: slice(1, None)})
+                    ax_boundary_width = {ax.name: (0, 0)}
+                elif (pos == "center" and ax_to == "outer") or (
+                    pos == "inner" and ax_to == "center"
+                ):
+                    ax_boundary_width = {ax.name: (0, 1)}
+                else:
+                    raise ValueError(
+                        f"From `{pos}` to `{ax_to}` is not a valid position "
+                        f"shift for cumsum operation along axis {ax}."
+                    )
 
             padded = pad(
                 data=data,
@@ -1425,6 +1534,14 @@ class Grid:
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
             If `False` (default), the points will be weighted equally.
             Optionally a dict with seperate values for each axis can be passed.
+        reverse : bool or dict, optional
+            If `True`, accumulate from the high-index end of the axis toward the
+            low-index end, so that the cumulative integral starts from the last
+            element rather than the first (the default, `False`, accumulates from
+            low index to high index). Forwarded to :meth:`Grid.cumsum`.
+            Optionally a dict with separate values for each axis can be passed;
+            it may only name axes that appear in `axis` (a `ValueError` is raised
+            otherwise).
 
         Returns
         -------

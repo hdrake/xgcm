@@ -5,6 +5,23 @@
 
 ### New Features
 
+### Bug Fixes
+
+- `Grid.get_metric` (and the operations built on it, e.g. `Grid.integrate` and
+  `Grid.average`) no longer emits spurious "Metric ... being interpolated ..."
+  `UserWarning`s when an exact-position metric combination exists but is not the
+  first candidate tried. The search now looks for an exact-position match across
+  all candidate combinations before falling back to interpolation, and warns at
+  most once. The returned metric is unchanged
+  ([#758](https://github.com/xgcm/xgcm/pull/758)).
+  By [Henri Drake](https://github.com/hdrake).
+
+- `Axis` now raises a `ValueError` immediately if the same dimension name is
+  assigned to more than one position (e.g. `{'center': 'x', 'outer': 'x'}`),
+  rather than silently accepting the invalid configuration
+  ([#634](https://github.com/xgcm/xgcm/issues/634)).
+  By [Mike German](https://github.com/steps-re).
+
 ### Breaking Changes
 
 - Removed the `periodic` argument of `xgcm.Grid`. Boundary behavior is now
@@ -73,12 +90,23 @@
 - Migrate documentation to mkdocs ([#691](https://github.com/xgcm/xgcm/pull/691))
   By [Nick Hodgskin](https://github.com/VeckoTheGecko).
 
+- Document which environment runs the documentation notebooks (`transform.ipynb`, `grid_metrics.ipynb`).
+  The existing `docs` pixi environment now bundles Jupyter Lab and can be launched with `pixi run notebooks`,
+  and the notebooks and contributor guide note the required dependencies ([#667](https://github.com/xgcm/xgcm/issues/667)).
+
 - xgcm now follows [Intended Effort Versioning (EffVer)](https://jacobtomlinson.dev/effver/); the policy
   is documented in the contributor guide and advertised by a README badge
   ([#679](https://github.com/xgcm/xgcm/issues/679), [#680](https://github.com/xgcm/xgcm/pull/680), [#742](https://github.com/xgcm/xgcm/pull/742)).
   By [Nick Hodgskin](https://github.com/VeckoTheGecko) and [Henri Drake](https://github.com/hdrake).
 
 ### Bugfixes
+
+- Respect the `fill_value` bound on the `@as_grid_ufunc` decorator (or passed to `GridUFunc`). It was
+  silently dropped in `GridUFunc.__call__` — only a call-time `fill_value` took effect, so a bound value
+  fell through to the `apply_as_grid_ufunc` default of `0`. The bound value is now forwarded (and still
+  overridable at call time), mirroring the other bound boundary kwargs
+  ([#652](https://github.com/xgcm/xgcm/issues/652), [#710](https://github.com/xgcm/xgcm/pull/710)).
+  By [Vincent Gao](https://github.com/gaoflow).
 
 - Fix `xgcm.padding.pad(..., other_component=...)` (and hence vector `Grid.diff`/`Grid.interp`)
   silently ignoring the vector rotation when the component is passed as a bare `DataArray`
