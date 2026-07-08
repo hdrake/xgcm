@@ -169,12 +169,6 @@ and reserve the right to close PRs where the scope makes meaningful review
 impractical or where this policy has not been followed, and to hide or delete
 comments that violate it.
 
-### Documentation
-
-These principles apply equally to documentation: review everything you submit and
-be able to stand behind it. See [Documentation](#documentation) above for what
-xgcm's docs should aim for.
-
 ## Versioning policy
 
 xgcm uses [Intended Effort Versioning (EffVer)](https://jacobtomlinson.dev/effver/): version numbers are `MACRO.MESO.MICRO`. A **MACRO** bump signals that adopting the release may require a large effort from users; a **MESO** bump signals that some effort may be required; a **MICRO** bump signals that little to no effort is expected. Version numbers communicate the *intended* upgrade effort, not a strict API-compatibility guarantee. (For releases below 1.0.0, the segments shift one position per EffVer's zero-version guidance: `0.MACRO.MESO`.)
