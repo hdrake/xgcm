@@ -13,7 +13,9 @@
   only for the conservative method), so transforming a dask array chunked along the
   vertical (e.g. CMIP6 ocean output) required a manual `.chunk({<axis>: -1})` at every
   call site. Chunking along other dimensions is preserved, and numpy-backed inputs are
-  unaffected ([#753](https://github.com/xgcm/xgcm/issues/753),
+  unaffected. A `dask` `PerformanceWarning` is emitted only when collapsing the axis
+  produces a chunk larger than dask's `array.chunk-size` guideline
+  ([#753](https://github.com/xgcm/xgcm/issues/753),
   [#754](https://github.com/xgcm/xgcm/pull/754)).
   By [Henri Drake](https://github.com/hdrake).
 

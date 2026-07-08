@@ -1440,6 +1440,40 @@ def test_chunking_along_transform_dim_is_rechunked_conservative():
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
+def test_chunking_along_transform_dim_warns_only_if_merged_chunk_large(recwarn):
+    """Collapsing the transform axis to one chunk emits a dask PerformanceWarning
+    only when the merged chunk exceeds dask's chunk-size guideline; small merges
+    (the common vertical case) stay silent (GH #753)."""
+    from dask.array import PerformanceWarning
+
+    (
+        source,
+        grid_kwargs,
+        target,
+        transform_kwargs,
+        _,
+        _,
+    ) = construct_test_source_data(cases["linear_depth_dens"])
+
+    source = source.chunk({"depth": 1})
+    if transform_kwargs.get("target_data") is not None:
+        transform_kwargs["target_data"] = transform_kwargs["target_data"].chunk(
+            {"depth": 1}
+        )
+    axis = list(grid_kwargs["coords"].keys())[0]
+    grid = Grid(source, periodic=False, **grid_kwargs)
+
+    # the tiny test arrays are far below the default 128 MiB guideline -> no warning
+    _ = grid.transform(source.data, axis, target, **transform_kwargs)
+    assert not any(isinstance(w.message, PerformanceWarning) for w in recwarn.list)
+
+    # force the guideline absurdly low so the same tiny transform trips the warning
+    with dask.config.set({"array.chunk-size": "1B"}):
+        with pytest.warns(PerformanceWarning, match="single chunk along the transform"):
+            _ = grid.transform(source.data, axis, target, **transform_kwargs)
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
 def test_grid_transform_input_check():
     (
         source,
