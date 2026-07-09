@@ -24,20 +24,27 @@
 
 ### Breaking Changes
 
+- The `boundary` argument (and `boundary_width`) has been renamed to `padding` (and `padding_width`)
+  throughout the public API, to better reflect the process of array padding and avoid confusion with
+  physical boundary conditions (e.g. an ocean-land boundary). The old names now raise an informative
+  error rather than going through a deprecation cycle
+  ([#678](https://github.com/xgcm/xgcm/issues/678), [#696](https://github.com/xgcm/xgcm/pull/696)).
+  By [Nick Hodgskin](https://github.com/VeckoTheGecko).
+
 - Removed the `periodic` argument of `xgcm.Grid`. Boundary behavior is now
-  controlled exclusively by the `boundary` argument. Migrate as follows:
-  `periodic=True` → `boundary="periodic"`; `periodic=False` → `boundary="fill"`
+  controlled exclusively by the `padding` argument. Migrate as follows:
+  `periodic=True` → `padding="periodic"`; `periodic=False` → `padding="fill"`
   (the previous implicit mapping); and the per-axis list form
   `periodic=["X"]` → a per-axis dict, e.g.
-  `boundary={"X": "periodic", "Y": "fill"}`. Passing `periodic=` now raises an
+  `padding={"X": "periodic", "Y": "fill"}`. Passing `periodic=` now raises an
   informative `ValueError` naming the replacement.
 
-  The default boundary semantics have also changed: previously a `Grid`
-  constructed without any boundary specification defaulted to *periodic* along
+  The default padding semantics have also changed: previously a `Grid`
+  constructed without any padding specification defaulted to *periodic* along
   every axis (silently wrapping), which was the root of several boundary-condition
-  bugs. Now, an axis with no boundary specified applies *no* boundary condition:
+  bugs. Now, an axis with no padding specified applies *no* boundary condition:
   operations that require padding along such an axis raise an informative error
-  instead of silently wrapping. Pass `boundary="periodic"` to recover the old
+  instead of silently wrapping. Pass `padding="periodic"` to recover the old
   wrap-around behavior. This makes the default explicitly non-periodic and fixes
   cases where a declared non-periodic axis could still wrap.
   ([#746](https://github.com/xgcm/xgcm/pull/746);
