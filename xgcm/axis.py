@@ -20,7 +20,7 @@ class Axis:
         str, str
     ]  # TODO give this mapping from positions to dimension names a better name?
     _default_shifts: Mapping[str, str]
-    _boundary: Optional[str]
+    _padding: Optional[str]
     _fill_value: float
 
     """A single direction along a model grid, containing potentially multiple cell positions."""
@@ -57,8 +57,8 @@ class Axis:
         padding : {None, 'fill', 'extend', 'periodic'}, optional
             A flag indicating how to handle padding:
 
-            * None:  Do not apply any padding conditions. Raise an error if
-              padding conditions are required for the operation.
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
               (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
@@ -66,7 +66,7 @@ class Axis:
             * 'periodic': Set values by wrapping around the array on the specified
                 axes. (i.e. a periodic boundary condition.)
         fill_value : float, optional
-            The value to use in the padding condition when padding='fill'.
+            The value to use in the boundary condition when padding='fill'.
         """
         # TODO - remove deprecation handling
         if "boundary" in kwargs:

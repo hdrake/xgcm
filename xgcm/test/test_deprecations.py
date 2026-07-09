@@ -39,3 +39,46 @@ def test_padding_deprecation():
             autoparse_metadata=False,
             boundary="periodic",
         )
+
+
+def test_padding_width_deprecation():
+    # `boundary_width` was renamed to `padding_width` (#696); the old name now
+    # raises rather than warning.
+    with pytest.raises(
+        ValueError,
+        match="Argument 'boundary_width' has been renamed to 'padding_width'",
+    ):
+        xgcm.as_grid_ufunc("(X:center)->(X:left)", boundary_width={"X": (1, 0)})
+
+
+def test_axis_boundary_attribute_removed():
+    # The `Axis.boundary` attribute was renamed to `Axis.padding` (#696).
+    ds = datasets["2d_left"]
+    grid = xgcm.Grid(
+        ds,
+        coords={
+            "X": {"left": "XG", "center": "XC"},
+            "Y": {"left": "YG", "center": "YC"},
+        },
+        autoparse_metadata=False,
+        padding="periodic",
+    )
+    with pytest.raises(
+        AttributeError, match="Attribute 'boundary' has been renamed to 'padding'"
+    ):
+        grid.axes["X"].boundary
+
+
+def test_gridufunc_boundary_attributes_removed():
+    # `GridUFunc.boundary` / `.boundary_width` were renamed to
+    # `.padding` / `.padding_width` (#696).
+    gf = xgcm.as_grid_ufunc("(X:center)->(X:left)")(lambda a: a)
+    with pytest.raises(
+        AttributeError, match="Attribute 'boundary' has been renamed to 'padding'"
+    ):
+        gf.boundary
+    with pytest.raises(
+        AttributeError,
+        match="Attribute 'boundary_width' has been renamed to 'padding_width'",
+    ):
+        gf.boundary_width

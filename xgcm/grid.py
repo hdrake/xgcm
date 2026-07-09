@@ -92,7 +92,7 @@ class Grid:
             If the values are not present in ``ds`` or are not dimensions,
             an error will be raised.
         fill_value : {float, dict}, optional
-            The value to use in padding conditions with `padding='fill'`.
+            The value to use in boundary conditions with `padding='fill'`.
             Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
         default_shifts : dict
@@ -105,8 +105,8 @@ class Grid:
             (This is a change from xgcm < 1.0, where the grid defaulted to
             periodic. Pass ``padding='periodic'`` to recover the old behavior.)
 
-            * None:  Do not apply any padding conditions. Raise an error if
-              padding conditions are required for the operation.
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
               (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
@@ -275,10 +275,10 @@ class Grid:
         axes: Optional[Iterable[str]] = None,
     ) -> Dict[str, Any]:
         """Convert kwarg input into dict for each available axis
-        E.g. for a grid with 2 axes for the keyword argument `boundary`
-        boundary = 'fill' --> boundary = {'X': 'fill', 'Y': 'fill'}
+        E.g. for a grid with 2 axes for the keyword argument `padding`
+        padding = 'fill' --> padding = {'X': 'fill', 'Y': 'fill'}
         or if not all axes are provided, the other axes will be parsed as defaults (None)
-        boundary = {'X': 'fill'} --> boundary = {'X': 'fill', 'Y': None}
+        padding = {'X': 'fill'} --> padding = {'X': 'fill', 'Y': None}
         """
         if axes is None:
             axes = self.axes
@@ -588,8 +588,8 @@ class Grid:
         padding : {None, 'fill', 'extend', 'periodic', dict}, optional
             A flag indicating how to handle padding:
 
-            * None:  Do not apply any padding conditions. Raise an error if
-              padding conditions are required for the operation.
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
               (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
@@ -599,7 +599,7 @@ class Grid:
             Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
         fill_value : float, optional
-            The value to use in the padding condition when `padding='fill'`.
+            The value to use in the boundary condition when `padding='fill'`.
 
         Returns
         -------
@@ -826,8 +826,8 @@ class Grid:
         padding : {None, 'fill', 'extend', 'periodic', dict}, optional
             A flag indicating how to handle padding:
 
-            * None:  Do not apply any padding conditions. Raise an error if
-              padding conditions are required for the operation.
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
               (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
@@ -837,7 +837,7 @@ class Grid:
             Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
         fill_value : {float, dict}, optional
-            The value to use in padding conditions with `padding='fill'`.
+            The value to use in boundary conditions with `padding='fill'`.
             Optionally a dict mapping axis name to separate values for each axis
             can be passed. Default is 0.
         dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
@@ -1430,8 +1430,8 @@ class Grid:
         padding : {None, 'fill', 'extend'}
             A flag indicating how to handle padding:
 
-            * None:  Do not apply any padding conditions. Raise an error if
-              padding conditions are required for the operation.
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
               (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
