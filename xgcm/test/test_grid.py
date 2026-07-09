@@ -51,9 +51,11 @@ class TestInvalidGrid:
             ds, *_ = datasets_grid_metric("C")
             Grid(ds, coords={"ax1": {"center": "XGEEEEEEEE"}}, autoparse_metadata=False)
 
-    @pytest.mark.xfail(reason="Not yet implemented")
-    def test_duplicate_values(self):
-        with pytest.raises(ValueError):
+    def test_duplicate_dims_same_axis(self):
+        """Same dimension assigned to two positions on one axis must raise."""
+        with pytest.raises(
+            ValueError, match="same dimension cannot be assigned to multiple positions"
+        ):
             ds, *_ = datasets_grid_metric("C")
             Grid(
                 ds,
@@ -61,6 +63,11 @@ class TestInvalidGrid:
                 autoparse_metadata=False,
             )
 
+    @pytest.mark.xfail(
+        reason="Cross-axis duplicate dimension check not yet implemented"
+    )
+    def test_duplicate_dims_cross_axis(self):
+        """Same dimension assigned across two different axes must raise."""
         with pytest.raises(ValueError):
             ds, *_ = datasets_grid_metric("C")
             Grid(
@@ -228,6 +235,141 @@ def test_cumsum(nonperiodic_1d, padding):
     #         axis.cumsum(ds.data_c, to=pos, padding=padding)
 
 
+@pytest.mark.parametrize("padding", ["extend", "fill"])
+def test_cumsum_reverse(nonperiodic_1d, padding):
+    """Reversed cumsum accumulates from the high-index end toward the low-index
+    end. Checked against an independent numpy ``np.cumsum(x[::-1])[::-1]``
+    computation across all ``to`` positions and both pad boundaries.
+
+    Reversed accumulation is the mirror image of the default: the natural
+    output position for a reversed cumsum of a center array is ``left`` (rather
+    than ``right``), trimming happens at the low-index end, and padding happens
+    at the high-index (upper) end -- so ``extend`` repeats the *last* value."""
+    ds, periodic, expected = nonperiodic_1d
+    grid = Grid(ds, padding="periodic")
+
+    to = grid.axes["X"].default_shifts["center"]
+
+    cumsum_g = grid.cumsum(
+        ds.data_g, axis="X", to="center", padding=padding, reverse=True
+    )
+    cumsum_c = grid.cumsum(ds.data_c, axis="X", to=to, padding=padding, reverse=True)
+
+    # reversed cumulative sums computed independently with numpy
+    rev_c = np.cumsum(ds.data_c.data[::-1])[::-1]
+    rev_g = np.cumsum(ds.data_g.data[::-1])[::-1]
+
+    if to == "right":
+        # center -> right (reversed): drop first element, pad upper end
+        fill_value = 0.0 if padding == "fill" else rev_c[-1]
+        np.testing.assert_allclose(cumsum_c.data, np.hstack([rev_c[1:], fill_value]))
+        # right -> center (reversed): natural, no pad/trim
+        np.testing.assert_allclose(cumsum_g.data, rev_g)
+    elif to == "left":
+        # center -> left (reversed): natural, no pad/trim
+        np.testing.assert_allclose(cumsum_c.data, rev_c)
+        # left -> center (reversed): drop first element, pad upper end
+        fill_value = 0.0 if padding == "fill" else rev_g[-1]
+        np.testing.assert_allclose(cumsum_g.data, np.hstack([rev_g[1:], fill_value]))
+    elif to == "inner":
+        # center -> inner (reversed): drop first element
+        np.testing.assert_allclose(cumsum_c.data, rev_c[1:])
+        # inner -> center (reversed): pad upper end
+        fill_value = 0.0 if padding == "fill" else rev_g[-1]
+        np.testing.assert_allclose(cumsum_g.data, np.hstack([rev_g, fill_value]))
+    elif to == "outer":
+        # center -> outer (reversed): pad upper end
+        fill_value = 0.0 if padding == "fill" else rev_c[-1]
+        np.testing.assert_allclose(cumsum_c.data, np.hstack([rev_c, fill_value]))
+        # outer -> center (reversed): drop first element
+        np.testing.assert_allclose(cumsum_g.data, rev_g[1:])
+
+
+@pytest.mark.parametrize("padding", ["extend", "fill"])
+def test_cumsum_reverse_false_matches_default(nonperiodic_1d, padding):
+    """`reverse=False` must be identical to the default (no `reverse` kwarg)."""
+    ds, _, _ = nonperiodic_1d
+    grid = Grid(ds, padding="periodic")
+
+    default = grid.cumsum(ds.data_c, axis="X", padding=padding)
+    explicit = grid.cumsum(ds.data_c, axis="X", padding=padding, reverse=False)
+    xr.testing.assert_identical(default, explicit)
+
+
+def test_cumsum_reverse_per_axis_dict():
+    """`reverse` accepts a per-axis dict, applied independently per axis."""
+    ds, coords, _ = datasets_grid_metric("C")
+    grid = Grid(ds, coords=coords, padding="fill", autoparse_metadata=False)
+    da = ds.tracer
+
+    # reverse only along X (dict form), forward along Y
+    result = grid.cumsum(
+        da, ["X", "Y"], padding="fill", reverse={"X": True, "Y": False}
+    )
+    # equivalent to applying the two axes sequentially with scalar `reverse`
+    expected = grid.cumsum(
+        grid.cumsum(da, "X", padding="fill", reverse=True),
+        "Y",
+        padding="fill",
+        reverse=False,
+    )
+    xr.testing.assert_allclose(result, expected)
+
+    # a bare scalar `reverse=True` reverses every requested axis
+    result_all = grid.cumsum(da, ["X", "Y"], padding="fill", reverse=True)
+    expected_all = grid.cumsum(
+        grid.cumsum(da, "X", padding="fill", reverse=True),
+        "Y",
+        padding="fill",
+        reverse=True,
+    )
+    xr.testing.assert_allclose(result_all, expected_all)
+
+
+def test_cumint_reverse():
+    """`Grid.cumint` forwards `reverse` through to `Grid.cumsum`."""
+    ds, coords, metrics = datasets_grid_metric("C")
+    grid = Grid(
+        ds,
+        coords=coords,
+        metrics=metrics,
+        padding="fill",
+        autoparse_metadata=False,
+    )
+    da = ds.tracer
+
+    # cumint == cumsum of (data * metric); reverse must flow through **kwargs
+    weight = grid.get_metric(da, ("X",))
+    expected = grid.cumsum(da * weight, "X", padding="fill", reverse=True)
+    result = grid.cumint(da, "X", padding="fill", reverse=True)
+    xr.testing.assert_allclose(result, expected)
+
+    # and reversed differs from the forward cumint
+    forward = grid.cumint(da, "X", padding="fill")
+    assert not np.allclose(result.data, forward.data)
+
+
+def test_cumsum_reverse_rejects_non_integrated_axis():
+    """A `reverse` dict naming an axis not in `axis` is an error, not ignored."""
+    ds, coords, metrics = datasets_grid_metric("C")
+    grid = Grid(
+        ds,
+        coords=coords,
+        metrics=metrics,
+        padding="fill",
+        autoparse_metadata=False,
+    )
+    da = ds.tracer
+
+    # "Y" is not being summed over, so a reverse value for it is ambiguous
+    with pytest.raises(ValueError, match="reverse.*not being cumulatively summed"):
+        grid.cumsum(da, "X", padding="fill", reverse={"X": True, "Y": False})
+
+    # the error propagates through cumint as well
+    with pytest.raises(ValueError, match="reverse.*not being cumulatively summed"):
+        grid.cumint(da, "X", padding="fill", reverse={"X": True, "Y": False})
+
+
 @pytest.mark.parametrize(
     "func",
     ["interp", "max", "min", "diff", "cumsum"],
@@ -383,6 +525,33 @@ def test_declared_nonperiodic_axis_does_not_wrap():
     np.testing.assert_allclose(diff_fill.isel(XG=0).values, ds.data_c.isel(XC=0).values)
 
 
+def test_cumsum_nonperiodic_does_not_wrap():
+    """Regression test for GH #625: ``cumsum`` must not silently apply periodic
+    boundaries when the axis is non-periodic. With no boundary condition it must
+    raise instead of wrapping; with ``padding='fill'`` (fill_value 0) it should
+    integrate from zero, i.e. ``[0, 1, 3, 6, ...]``."""
+    ds = xr.Dataset(
+        coords={
+            "zl": (["zl"], np.arange(1.0, 15.0)),
+            "zi": (["zi"], np.arange(0.5, 15.5)),
+        }
+    )
+    coords = {"Z": {"center": "zl", "outer": "zi"}}
+
+    # No boundary specified: cumsum needs to pad, so it must raise rather than
+    # silently wrapping (the pre-1.0 behavior that produced the #625 bug).
+    grid = Grid(ds, coords=coords, autoparse_metadata=False)
+    with pytest.raises(ValueError, match="No boundary condition was specified"):
+        grid.cumsum(ds.zl, "Z")
+
+    # With an explicit 'fill' boundary the integration starts from 0 and
+    # increases monotonically (no wrap-around contaminating the first value).
+    grid_fill = Grid(ds, coords=coords, padding="fill", autoparse_metadata=False)
+    result = grid_fill.cumsum(ds.zl, "Z", padding="fill", fill_value=0.0)
+    expected = np.hstack([0.0, np.cumsum(ds.zl.data)])
+    np.testing.assert_allclose(result.data, expected)
+
+
 def test_invalid_fill_value_error():
     ds = datasets["1d_left"]
     ds, grid_kwargs = parse_comodo(ds)
@@ -453,7 +622,11 @@ def test_keep_coords_removed():
     ds, coords, metrics = datasets_grid_metric("B")
     ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
     grid = Grid(
-        ds, coords=coords, metrics=metrics, padding="fill", autoparse_metadata=False
+        ds,
+        coords=coords,
+        metrics=metrics,
+        padding="periodic",
+        autoparse_metadata=False,
     )
     for axis_name in grid.axes.keys():
         with pytest.raises(ValueError, match="has been removed"):

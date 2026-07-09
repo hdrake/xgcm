@@ -5,6 +5,23 @@
 
 ### New Features
 
+### Bug Fixes
+
+- `Grid.get_metric` (and the operations built on it, e.g. `Grid.integrate` and
+  `Grid.average`) no longer emits spurious "Metric ... being interpolated ..."
+  `UserWarning`s when an exact-position metric combination exists but is not the
+  first candidate tried. The search now looks for an exact-position match across
+  all candidate combinations before falling back to interpolation, and warns at
+  most once. The returned metric is unchanged
+  ([#758](https://github.com/xgcm/xgcm/pull/758)).
+  By [Henri Drake](https://github.com/hdrake).
+
+- `Axis` now raises a `ValueError` immediately if the same dimension name is
+  assigned to more than one position (e.g. `{'center': 'x', 'outer': 'x'}`),
+  rather than silently accepting the invalid configuration
+  ([#634](https://github.com/xgcm/xgcm/issues/634)).
+  By [Mike German](https://github.com/steps-re).
+
 ### Breaking Changes
 
 - Removed the `periodic` argument of `xgcm.Grid`. Boundary behavior is now
@@ -27,10 +44,11 @@
   closes [#195](https://github.com/xgcm/xgcm/issues/195),
   [#509](https://github.com/xgcm/xgcm/issues/509),
   [#604](https://github.com/xgcm/xgcm/issues/604),
-  [#624](https://github.com/xgcm/xgcm/issues/624);
-  supersedes [#626](https://github.com/xgcm/xgcm/pull/626))
+  [#624](https://github.com/xgcm/xgcm/issues/624),
+  [#625](https://github.com/xgcm/xgcm/issues/625))
   By [Henri Drake](https://github.com/hdrake).
-  Supersedes earlier work by [Julius Busecke](https://github.com/jbusecke) in #626.
+  Supersedes earlier work by [Julius Busecke](https://github.com/jbusecke) in
+  [#626](https://github.com/xgcm/xgcm/pull/626).
 
 - Removed the deprecated `keep_coords` keyword argument from grid operations
   (`Grid.interp`, `Grid.diff`, `Grid.min`, `Grid.max`, `Grid.cumsum`, etc.) and from

@@ -423,6 +423,13 @@ def _pad_basic(
     da_padded = da.copy(deep=False)
 
     for ax, widths in padding_width.items():
+        # Nothing to do for an axis with zero padding width on both sides. Skip
+        # it before touching the boundary condition so that an axis with no
+        # boundary specified (``None``) does not spuriously error (or, since
+        # ``None`` is no longer a key of the pad-kwarg mapping, raise a bare
+        # ``KeyError``) when no padding is actually requested along it.
+        if all(w == 0 for w in widths):
+            continue
         axis = grid.axes[ax]
         _, dim = axis._get_position_name(da)
         ax_padding = padding[ax]
@@ -430,7 +437,7 @@ def _pad_basic(
         # actually padded (non-zero width). If none was specified (``None``)
         # we refuse to silently wrap (the old, surprising default) and instead
         # ask the user to make the boundary explicit. See GH #509, #604, #624.
-        if ax_padding is None and any(w != 0 for w in widths):
+        if ax_padding is None:
             raise ValueError(
                 f"No boundary condition was specified for axis {ax!r}, but the "
                 f"requested operation needs to pad it. Set a boundary condition, "
