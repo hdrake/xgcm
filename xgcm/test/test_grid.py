@@ -127,16 +127,19 @@ def test_raise_on_operation_not_valid_for_same_position():
 )
 @pytest.mark.parametrize("fill_value", [0, 1.0])
 def test_grid_create(all_datasets, boundary, fill_value):
-    ds, periodic, expected = all_datasets
-    grid = Grid(ds, periodic=periodic)
+    ds, grid_boundary, expected = all_datasets
+    grid = Grid(ds, boundary=grid_boundary)
 
     assert grid is not None
 
-    for ax in grid.axes.values():
-        assert ax.boundary == "periodic" if periodic else "fill"
+    for name, ax in grid.axes.items():
+        if isinstance(grid_boundary, dict):
+            assert ax.boundary == grid_boundary.get(name)
+        else:
+            assert ax.boundary == grid_boundary
         assert ax.fill_value == 0.0
 
-    grid = Grid(ds, periodic=periodic, boundary=boundary, fill_value=fill_value)
+    grid = Grid(ds, boundary=boundary, fill_value=fill_value)
 
     for name, ax in grid.axes.items():
         if isinstance(boundary, dict):
@@ -153,15 +156,15 @@ def test_grid_create(all_datasets, boundary, fill_value):
 
 
 def test_create_grid_no_comodo(all_datasets):
-    ds, periodic, expected = all_datasets
-    grid_expected = Grid(ds, periodic=periodic)
+    ds, boundary, expected = all_datasets
+    grid_expected = Grid(ds, boundary=boundary)
 
     ds_noattr = ds.copy()
     for var in ds.variables:
         ds_noattr[var].attrs.clear()
 
     coords = expected["axes"]
-    grid = Grid(ds_noattr, periodic=periodic, coords=coords, autoparse_metadata=False)
+    grid = Grid(ds_noattr, boundary=boundary, coords=coords, autoparse_metadata=False)
 
     for axis_name_expected in grid_expected.axes:
         axis_expected = grid_expected.axes[axis_name_expected]
@@ -171,11 +174,11 @@ def test_create_grid_no_comodo(all_datasets):
 
 def test_grid_no_coords(periodic_1d):
     """Ensure that you can use xgcm with Xarray datasets that don't have dimension coordinates."""
-    ds, periodic, expected = periodic_1d
+    ds, boundary, expected = periodic_1d
     ds_nocoords = ds.drop_vars(list(ds.dims.keys()))
 
     coords = expected["axes"]
-    grid = Grid(ds_nocoords, periodic=periodic, coords=coords, autoparse_metadata=False)
+    grid = Grid(ds_nocoords, boundary=boundary, coords=coords, autoparse_metadata=False)
 
     diff = grid.diff(ds["data_c"], "X")
     assert len(diff.coords) == 0
@@ -184,15 +187,15 @@ def test_grid_no_coords(periodic_1d):
 
 
 def test_grid_repr(all_datasets):
-    ds, periodic, _ = all_datasets
-    grid = Grid(ds, periodic=periodic)
+    ds, boundary, _ = all_datasets
+    grid = Grid(ds, boundary=boundary)
     r = repr(grid).split("\n")
     assert r[0] == "<xgcm.Grid>"
 
 
 @pytest.mark.parametrize("boundary", ["extend", "fill"])
 def test_cumsum(nonperiodic_1d, boundary):
-    ds, periodic, expected = nonperiodic_1d
+    ds, _, expected = nonperiodic_1d
     grid = Grid(ds, boundary="periodic")
 
     cumsum_g = grid.cumsum(ds.data_g, axis="X", to="center", boundary=boundary)
@@ -296,9 +299,7 @@ def test_cumsum_reverse_false_matches_default(nonperiodic_1d, boundary):
 def test_cumsum_reverse_per_axis_dict():
     """`reverse` accepts a per-axis dict, applied independently per axis."""
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(
-        ds, coords=coords, periodic=False, boundary="fill", autoparse_metadata=False
-    )
+    grid = Grid(ds, coords=coords, boundary="fill", autoparse_metadata=False)
     da = ds.tracer
 
     # reverse only along X (dict form), forward along Y
@@ -332,7 +333,6 @@ def test_cumint_reverse():
         ds,
         coords=coords,
         metrics=metrics,
-        periodic=False,
         boundary="fill",
         autoparse_metadata=False,
     )
@@ -356,7 +356,6 @@ def test_cumsum_reverse_rejects_non_integrated_axis():
         ds,
         coords=coords,
         metrics=metrics,
-        periodic=False,
         boundary="fill",
         autoparse_metadata=False,
     )
@@ -411,7 +410,7 @@ def test_2d_vector_dict_input_no_face_connections(func, boundary, chunked):
     # Eager (numpy) baseline computed via the equivalent scalar grid ufuncs:
     # diff_2d_vector(u, v) == (diff(u, "X"), diff(v, "Y")) and likewise for interp.
     scalar_func = func.replace("_2d_vector", "")
-    eager_grid = Grid(ds, coords=coords, periodic=True, autoparse_metadata=False)
+    eager_grid = Grid(ds, coords=coords, boundary="periodic", autoparse_metadata=False)
     eager_scalar = getattr(eager_grid, scalar_func)
     expected = {
         "X": eager_scalar(ds.u, "X", boundary=boundary),
@@ -421,7 +420,7 @@ def test_2d_vector_dict_input_no_face_connections(func, boundary, chunked):
     if chunked:
         ds = ds.chunk({"xt": 1, "yt": 1, "xu": 1, "yu": 1, "time": 1, "zt": 1})
 
-    grid = Grid(ds, coords=coords, periodic=True, autoparse_metadata=False)
+    grid = Grid(ds, coords=coords, boundary="periodic", autoparse_metadata=False)
     grid_method = getattr(grid, func)
     result = grid_method({"X": ds.u, "Y": ds.v}, boundary=boundary)
 
@@ -438,7 +437,6 @@ def test_grid_dict_input_boundary_fill(nonperiodic_1d):
     grid_direct = Grid(
         ds,
         coords=grid_kwargs["coords"],
-        periodic=False,
         boundary="fill",
         fill_value=5,
         autoparse_metadata=False,
@@ -446,7 +444,6 @@ def test_grid_dict_input_boundary_fill(nonperiodic_1d):
     grid_dict = Grid(
         ds,
         coords=grid_kwargs["coords"],
-        periodic=False,
         boundary={"X": "fill"},
         fill_value={"X": 5},
         autoparse_metadata=False,
@@ -465,6 +462,94 @@ def test_invalid_boundary_error():
         Grid(ds, boundary={"X": 0}, autoparse_metadata=False)
     with pytest.raises(ValueError):
         Grid(ds, boundary=0, autoparse_metadata=False)
+
+
+def test_periodic_argument_removed():
+    # The `periodic` argument was removed in v1.0.0 (supersedes GH #626).
+    # Passing it must raise an informative error pointing at `boundary=`.
+    ds = datasets["1d_left"]
+    with pytest.raises(ValueError, match="periodic.*has been removed"):
+        Grid(ds, periodic=True, autoparse_metadata=False)
+    with pytest.raises(ValueError, match="boundary='periodic'"):
+        Grid(ds, periodic=False, autoparse_metadata=False)
+    with pytest.raises(ValueError, match="periodic.*has been removed"):
+        Grid(ds, periodic=["X"], autoparse_metadata=False)
+
+
+def test_unexpected_kwarg_error():
+    ds = datasets["1d_left"]
+    with pytest.raises(TypeError, match="unexpected keyword"):
+        Grid(ds, not_a_real_kwarg=True, autoparse_metadata=False)
+
+
+def test_default_boundary_is_not_periodic():
+    """Regression test for GH #509 / #604: without an explicit boundary the
+    grid must NOT silently wrap. Operations that need padding along an axis with
+    no boundary condition should raise an informative error rather than applying
+    periodic boundaries by default (the pre-1.0 behavior)."""
+    ds = datasets["1d_left"]
+    ds, grid_kwargs = parse_comodo(ds)
+    grid = Grid(ds, coords=grid_kwargs["coords"], autoparse_metadata=False)
+
+    # default boundary is unset (None), i.e. explicitly non-periodic
+    assert grid.axes["X"].boundary is None
+    assert grid.axes["X"].periodic is False
+
+    with pytest.raises(ValueError, match="No boundary condition was specified"):
+        grid.diff(ds.data_c, "X")
+
+
+def test_declared_nonperiodic_axis_does_not_wrap():
+    """Consistency guard (GH #509 / #604 / #624): an axis declared with an
+    explicitly non-periodic boundary (e.g. 'fill') must never wrap, and must
+    give a different result at the wrap-around edge than a periodic axis.
+    The `periodic`-vs-`boundary` string/list confusion of #624 disappears now
+    that only `boundary` exists."""
+    ds = datasets["1d_left"]
+    ds, grid_kwargs = parse_comodo(ds)
+
+    grid_fill = Grid(
+        ds, coords=grid_kwargs["coords"], boundary="fill", autoparse_metadata=False
+    )
+    diff_fill = grid_fill.diff(ds.data_c, "X")
+
+    grid_periodic = Grid(
+        ds, coords=grid_kwargs["coords"], boundary="periodic", autoparse_metadata=False
+    )
+    diff_periodic = grid_periodic.diff(ds.data_c, "X")
+
+    # The two boundaries must give different results at the wrap-around edge;
+    # if 'fill' silently wrapped they would be identical (the #604 bug).
+    assert not np.allclose(diff_fill.values, diff_periodic.values)
+    # 'fill' (with default fill_value 0) at the left edge: data_c[0] - 0
+    np.testing.assert_allclose(diff_fill.isel(XG=0).values, ds.data_c.isel(XC=0).values)
+
+
+def test_cumsum_nonperiodic_does_not_wrap():
+    """Regression test for GH #625: ``cumsum`` must not silently apply periodic
+    boundaries when the axis is non-periodic. With no boundary condition it must
+    raise instead of wrapping; with ``boundary='fill'`` (fill_value 0) it should
+    integrate from zero, i.e. ``[0, 1, 3, 6, ...]``."""
+    ds = xr.Dataset(
+        coords={
+            "zl": (["zl"], np.arange(1.0, 15.0)),
+            "zi": (["zi"], np.arange(0.5, 15.5)),
+        }
+    )
+    coords = {"Z": {"center": "zl", "outer": "zi"}}
+
+    # No boundary specified: cumsum needs to pad, so it must raise rather than
+    # silently wrapping (the pre-1.0 behavior that produced the #625 bug).
+    grid = Grid(ds, coords=coords, autoparse_metadata=False)
+    with pytest.raises(ValueError, match="No boundary condition was specified"):
+        grid.cumsum(ds.zl, "Z")
+
+    # With an explicit 'fill' boundary the integration starts from 0 and
+    # increases monotonically (no wrap-around contaminating the first value).
+    grid_fill = Grid(ds, coords=coords, boundary="fill", autoparse_metadata=False)
+    result = grid_fill.cumsum(ds.zl, "Z", boundary="fill", fill_value=0.0)
+    expected = np.hstack([0.0, np.cumsum(ds.zl.data)])
+    np.testing.assert_allclose(result.data, expected)
 
 
 def test_invalid_fill_value_error():
@@ -503,7 +588,13 @@ def test_invalid_fill_value_error():
 def test_keep_coords(funcname, gridtype):
     ds, coords, metrics = datasets_grid_metric(gridtype)
     ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
-    grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
+    grid = Grid(
+        ds,
+        coords=coords,
+        metrics=metrics,
+        boundary="periodic",
+        autoparse_metadata=False,
+    )
 
     func = getattr(grid, funcname)
     for axis_name in grid.axes.keys():
@@ -530,7 +621,13 @@ def test_keep_coords_removed():
 
     ds, coords, metrics = datasets_grid_metric("B")
     ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
-    grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
+    grid = Grid(
+        ds,
+        coords=coords,
+        metrics=metrics,
+        boundary="periodic",
+        autoparse_metadata=False,
+    )
     for axis_name in grid.axes.keys():
         with pytest.raises(ValueError, match="has been removed"):
             grid.diff(ds.tracer, axis_name, keep_coords=False)
@@ -567,7 +664,7 @@ def test_preserve_input_noncore_coords(funcname, use_dask):
     grid = Grid(
         ds,
         coords={"X": {"center": "XC", "left": "XG"}},
-        periodic=True,
+        boundary="periodic",
         autoparse_metadata=False,
     )
 
@@ -624,7 +721,7 @@ def test_cumsum_preserves_input_noncore_coords(use_dask):
     grid = Grid(
         ds,
         coords={"X": {"center": "XC", "left": "XG"}},
-        periodic=True,
+        boundary="periodic",
         autoparse_metadata=False,
     )
 
@@ -686,7 +783,7 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
         (["X"], "tracer"),
     ],
 )
-@pytest.mark.parametrize("periodic", [True, False])
+@pytest.mark.parametrize("grid_boundary", ["periodic", "fill"])
 @pytest.mark.parametrize(
     "boundary, boundary_expected",
     [
@@ -705,10 +802,10 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
 )
 @pytest.mark.parametrize("fill_value", [None, 0.1])
 def test_interp_like(
-    metric_axes, metric_name, periodic, boundary, boundary_expected, fill_value
+    metric_axes, metric_name, grid_boundary, boundary, boundary_expected, fill_value
 ):
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, periodic=periodic, autoparse_metadata=False)
+    grid = Grid(ds, coords=coords, boundary=grid_boundary, autoparse_metadata=False)
     grid.set_metrics(metric_axes, metric_name)
     metric_available = grid._metrics.get(frozenset(metric_axes), None)
     metric_available = metric_available[0]
@@ -774,7 +871,6 @@ def test_boundary_global_input(funcname, boundary, fill_value):
         ds,
         coords=coords,
         metrics=metrics,
-        periodic=False,
         boundary=boundary,
         fill_value=fill_value,
         autoparse_metadata=False,
@@ -787,7 +883,6 @@ def test_boundary_global_input(funcname, boundary, fill_value):
         ds,
         coords=coords,
         metrics=metrics,
-        periodic=False,
         boundary=boundary,
         autoparse_metadata=False,
     )

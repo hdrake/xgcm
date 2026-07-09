@@ -265,6 +265,7 @@ def create_1d_test_grid(ax_name, length=9):
                 "outer": f"{ax_name}_o",
             }
         },
+        boundary="periodic",
         autoparse_metadata=False,
     )
 
@@ -291,6 +292,7 @@ def create_2d_test_grid(ax_name_1, ax_name_2, length1=9, length2=11):
                 "outer": f"{ax_name_2}_o",
             },
         },
+        boundary="periodic",
         autoparse_metadata=False,
     )
 
@@ -533,7 +535,7 @@ class TestGridUFuncNoPadding:
         grid = Grid(
             ds,
             coords={"Y": {"center": "j", "left": "jg"}},
-            periodic=True,
+            boundary="periodic",
             autoparse_metadata=False,
         )
 

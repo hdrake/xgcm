@@ -52,6 +52,7 @@ grid = Grid(
         "X": {"center": "x_c", "left": "x_g"},
         "Y": {"center": "y_c", "left": "y_g"},
     },
+    boundary="periodic",
     autoparse_metadata=False,
 )
 grid

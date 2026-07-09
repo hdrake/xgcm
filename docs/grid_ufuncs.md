@@ -125,7 +125,10 @@ ds = xr.Dataset(
 )
 
 grid = Grid(
-    ds, coords={"X": {"center": "x_c", "left": "x_g"}}, autoparse_metadata=False
+    ds,
+    coords={"X": {"center": "x_c", "left": "x_g"}},
+    boundary="periodic",
+    autoparse_metadata=False,
 )
 grid
 ```
@@ -286,7 +289,9 @@ da = da.copy(data=arr)
 interp_center_to_left(grid, da, axis=[["X"]])
 ```
 
-Here a periodic boundary condition has been used as the default, but we can choose other boundary conditions using the `boundary` kwarg:
+Here a periodic boundary condition has been used, because the `grid` was created
+with `boundary="periodic"` and the decorated function did not specify its own
+`boundary`. We can choose other boundary conditions using the `boundary` kwarg:
 
 ```python
 @as_grid_ufunc(

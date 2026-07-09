@@ -16,7 +16,6 @@ _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG = {
     "periodic": "wrap",
     "fill": "constant",
     "extend": "edge",
-    None: "wrap",  # current default is periodic. This should achieve that.
 }
 
 
@@ -173,11 +172,50 @@ def _pad_face_connections(
     # the same shape. We will pad everything now and then replace the connections.
     # That might however not be the most computational efficient way to do it.
 
+    n_facedim = len(da[facedim])
+
+    # The pre-padding below pads every face on every edge, but its values only
+    # matter on edges *without* a face connection: connected edges have their
+    # placeholder halos overwritten with neighbor data afterwards. An axis may
+    # therefore legitimately carry no boundary condition (``None``) as long as
+    # every edge that genuinely requires padding is connected. Check this here
+    # (raising the informative no-boundary error only for unconnected edges),
+    # and substitute a neutral 'fill' for the placeholder pre-padding of fully
+    # connected axes so that ``_pad_basic``'s no-boundary guard does not fire
+    # for halos that are about to be overwritten anyway.
+    face_links = connections[facedim]
+    prepad_padding = dict(padding)
+    for axname in pad_axes:
+        if prepad_padding.get(axname) is not None:
+            continue
+        for side, side_name in [(0, "left"), (1, "right")]:
+            if padding_width[axname][side] == 0:
+                continue
+            unconnected_faces = [
+                i
+                for i in range(n_facedim)
+                if face_links.get(i, {}).get(axname, (None, None))[side] is None
+            ]
+            if unconnected_faces:
+                raise ValueError(
+                    f"No boundary condition was specified for axis {axname!r}, "
+                    f"but the requested operation needs to pad the {side_name} "
+                    f"edge of face(s) {unconnected_faces}, which have no face "
+                    f"connection there. Set a boundary condition, e.g. "
+                    f"``boundary='fill'`` (or 'extend'/'periodic'), on the Grid "
+                    f"(``Grid(..., boundary=...)``) or pass ``boundary=`` to the "
+                    f"grid method."
+                )
+        # Every padded edge of this axis is connected, so the pre-padded halos
+        # are placeholders that will be overwritten by connection data (or
+        # trimmed); use a neutral fill for them.
+        prepad_padding[axname] = "fill"
+
     da_prepadded = _pad_basic(
         da,
         grid,
         max_padding_width,
-        padding,
+        prepad_padding,
         fill_value,
     )
 
@@ -186,11 +224,9 @@ def _pad_face_connections(
             da_partner,
             grid,
             max_padding_width,
-            padding,
+            prepad_padding,
             fill_value,
         )
-
-    n_facedim = len(da[facedim])
     faces = []
 
     # Iterate over each face and pad accordingly
@@ -387,9 +423,28 @@ def _pad_basic(
     da_padded = da.copy(deep=False)
 
     for ax, widths in padding_width.items():
+        # Nothing to do for an axis with zero padding width on both sides. Skip
+        # it before touching the boundary condition so that an axis with no
+        # boundary specified (``None``) does not spuriously error (or, since
+        # ``None`` is no longer a key of the pad-kwarg mapping, raise a bare
+        # ``KeyError``) when no padding is actually requested along it.
+        if all(w == 0 for w in widths):
+            continue
         axis = grid.axes[ax]
         _, dim = axis._get_position_name(da)
         ax_padding = padding[ax]
+        # A boundary condition is genuinely required whenever this edge is
+        # actually padded (non-zero width). If none was specified (``None``)
+        # we refuse to silently wrap (the old, surprising default) and instead
+        # ask the user to make the boundary explicit. See GH #509, #604, #624.
+        if ax_padding is None:
+            raise ValueError(
+                f"No boundary condition was specified for axis {ax!r}, but the "
+                f"requested operation needs to pad it. Set a boundary condition, "
+                f"e.g. ``boundary='fill'`` (or 'extend'/'periodic'), on the Grid "
+                f"(``Grid(..., boundary=...)``) or pass ``boundary=`` to the "
+                f"grid method."
+            )
         # translate padding and kwargs to xarray.pad syntax
         ax_padding = _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG[ax_padding]
         if ax_padding == "constant":

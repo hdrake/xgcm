@@ -61,7 +61,6 @@ class Grid:
         self,
         ds: xr.Dataset,
         coords: Optional[Mapping[str, Mapping[str, str]]] = None,
-        periodic: bool = True,
         fill_value: Optional[Union[float, Mapping[str, float]]] = None,
         default_shifts: Optional[
             Mapping[str, str]
@@ -72,6 +71,7 @@ class Grid:
         ] = None,  # TODO: add more specific typing
         metrics: Optional[Mapping[Tuple[str], List[str]]] = None,  # TODO type hint this
         autoparse_metadata: bool = True,
+        **kwargs,
     ):
         """
         Create a new Grid object from an input dataset.
@@ -91,10 +91,6 @@ class Grid:
             at the `left` position along the `X` axis).
             If the values are not present in ``ds`` or are not dimensions,
             an error will be raised.
-        periodic : {True, False, list}
-            Whether the grid is periodic (i.e. "wrap-around"). If a list is
-            specified (e.g. ``['X', 'Y']``), the axis names in the list will be
-            periodic and any other axes founds will be assumed non-periodic.
         fill_value : {float, dict}, optional
             The value to use in boundary conditions with `boundary='fill'`.
             Optionally a dict mapping axis name to seperate values for each axis
@@ -103,7 +99,11 @@ class Grid:
             A dictionary of dictionaries specifying default grid position
             shifts (e.g. ``{'X': {'center': 'left', 'left': 'center'}}``)
         boundary : {None, 'fill', 'extend', 'periodic', dict}, optional
-            A flag indicating how to handle boundaries:
+            A flag indicating how to handle boundaries. The default (``None``)
+            applies no boundary condition: operations that require padding along
+            such an axis raise an informative error instead of silently wrapping.
+            (This is a change from xgcm < 1.0, where the grid defaulted to
+            periodic. Pass ``boundary='periodic'`` to recover the old behavior.)
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
@@ -191,12 +191,23 @@ class Grid:
                 category=DeprecationWarning,
             )
 
-        # Deprecation Warnigns
-        if periodic:
-            warnings.warn(
-                "The `periodic` argument will be deprecated. "
-                "To preserve previous behavior supply `boundary = 'periodic'.",
-                category=DeprecationWarning,
+        # TODO - remove deprecation handling
+        # The `periodic` argument was removed in v1.0.0. Historically it
+        # defaulted to True, silently making every axis periodic. That default
+        # is the root of several boundary-condition bugs (GH #509, #604, #624),
+        # so `periodic` is gone and boundaries must now be set explicitly via
+        # `boundary`. Intercept the old kwarg and point users at the replacement.
+        if "periodic" in kwargs:
+            raise ValueError(
+                "The `periodic` argument has been removed. Use "
+                "`boundary='periodic'` (per axis if needed, e.g. "
+                "`boundary={'X': 'periodic', 'Y': 'fill'}`) instead. "
+                "Previously `periodic=False` corresponded to `boundary='fill'`."
+            )
+        if kwargs:
+            raise TypeError(
+                f"Grid.__init__() got unexpected keyword argument(s): "
+                f"{', '.join(repr(k) for k in kwargs)}"
             )
 
         if fill_value:
@@ -218,23 +229,11 @@ class Grid:
         # TODO We need a way here to check valid input. Maybe also in _as_axis_kwargs?
         # Parse axis properties
         boundary_dict = self._map_kwargs_over_axes(boundary, axes=all_axes)
+        # Any axis without an explicit boundary keeps ``None`` (no boundary
+        # condition). Padding-requiring operations on such axes raise rather than
+        # silently wrapping, which was the pre-1.0 `periodic=True` default.
         # TODO: In the future we want this the only place where we store these.
         # TODO: This info needs to then be accessible to e.g. pad()
-
-        # Parse list input. This case does only apply to periodic.
-        # Since we plan on deprecating it soon handle it here, so we can easily
-        # remove it later
-        if isinstance(periodic, list):
-            periodic_dict = {axname: True for axname in periodic}
-        else:
-            periodic_dict = self._map_kwargs_over_axes(periodic, axes=all_axes)
-
-        for ax, p in periodic_dict.items():
-            if boundary_dict[ax] is None:
-                if p is True:
-                    boundary_dict[ax] = "periodic"
-                else:
-                    boundary_dict[ax] = "fill"
 
         default_shifts_dict = self._map_kwargs_over_axes(default_shifts, axes=all_axes)
 
@@ -278,10 +277,10 @@ class Grid:
         axes: Optional[Iterable[str]] = None,
     ) -> Dict[str, Any]:
         """Convert kwarg input into dict for each available axis
-        E.g. for a grid with 2 axes for the keyword argument `periodic`
-        periodic = True --> periodic = {'X': True, 'Y':True}
+        E.g. for a grid with 2 axes for the keyword argument `boundary`
+        boundary = 'fill' --> boundary = {'X': 'fill', 'Y': 'fill'}
         or if not all axes are provided, the other axes will be parsed as defaults (None)
-        periodic = {'X':True} --> periodic={'X': True, 'Y':None}
+        boundary = {'X': 'fill'} --> boundary = {'X': 'fill', 'Y': None}
         """
         if axes is None:
             axes = self.axes
@@ -918,9 +917,10 @@ class Grid:
         --------
         Each keyword argument can be provided as a `per-axis` dictionary. For instance,
         if a global 2D dataset should be interpolated on both X and Y axis, but it is
-        only periodic in the X axis, we can do this:
+        only periodic in the X axis (and should be padded along the Y axis), we can
+        do this:
 
-        >>> grid.interp(da, ["X", "Y"], periodic={"X": True, "Y": False})
+        >>> grid.interp(da, ["X", "Y"], boundary={"X": "periodic", "Y": "fill"})
         """
         return self._1d_grid_ufunc_dispatch("interp", da, axis, **kwargs)
 

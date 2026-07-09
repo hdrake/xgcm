@@ -134,6 +134,37 @@ class TestPadding:
         xr.testing.assert_allclose(expected, result)
 
 
+def test_padding_zero_width_no_boundary_axis():
+    # Regression test: when one axis has non-zero padding width and another axis
+    # is requested with zero width but has no boundary condition (``boundary=None``,
+    # the new default), padding must not error. Previously ``None`` mapped to
+    # 'wrap' and the zero-width pad was a harmless no-op; after that mapping was
+    # removed the zero-width axis hit a bare ``KeyError(None)`` in ``_pad_basic``.
+    # It must instead skip the un-padded axis and only pad the non-zero one.
+    ds, coords, _ = datasets_grid_metric("C")
+    # X gets an explicit boundary; Y is left unset, so ``Y.boundary is None``.
+    grid = Grid(ds, coords=coords, boundary={"X": "fill"}, autoparse_metadata=False)
+    assert grid.axes["Y"].boundary is None
+    data = ds.tracer
+
+    # Y appears in boundary_width with zero width alongside a non-zero X width.
+    result = pad(
+        data,
+        grid,
+        boundary_width={"X": (1, 0), "Y": (0, 0)},
+        fill_value=None,
+        other_component=None,
+    )
+
+    # Only X should have been padded (Y left untouched); equivalent to padding X
+    # alone with 'fill'.
+    xdim = grid._get_dims_from_axis(data, "X")[0]
+    expected = _strip_all_coords(
+        data.pad({xdim: (1, 0)}, "constant", constant_values=0.0)
+    )
+    xr.testing.assert_allclose(expected, result)
+
+
 # TODO: Make sure that we cannot specify mixed methods for padding if the input is something like `cube-sphere` or `tripolar`
 
 

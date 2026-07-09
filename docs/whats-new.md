@@ -24,6 +24,32 @@
 
 ### Breaking Changes
 
+- Removed the `periodic` argument of `xgcm.Grid`. Boundary behavior is now
+  controlled exclusively by the `boundary` argument. Migrate as follows:
+  `periodic=True` → `boundary="periodic"`; `periodic=False` → `boundary="fill"`
+  (the previous implicit mapping); and the per-axis list form
+  `periodic=["X"]` → a per-axis dict, e.g.
+  `boundary={"X": "periodic", "Y": "fill"}`. Passing `periodic=` now raises an
+  informative `ValueError` naming the replacement.
+
+  The default boundary semantics have also changed: previously a `Grid`
+  constructed without any boundary specification defaulted to *periodic* along
+  every axis (silently wrapping), which was the root of several boundary-condition
+  bugs. Now, an axis with no boundary specified applies *no* boundary condition:
+  operations that require padding along such an axis raise an informative error
+  instead of silently wrapping. Pass `boundary="periodic"` to recover the old
+  wrap-around behavior. This makes the default explicitly non-periodic and fixes
+  cases where a declared non-periodic axis could still wrap.
+  ([#746](https://github.com/xgcm/xgcm/pull/746);
+  closes [#195](https://github.com/xgcm/xgcm/issues/195),
+  [#509](https://github.com/xgcm/xgcm/issues/509),
+  [#604](https://github.com/xgcm/xgcm/issues/604),
+  [#624](https://github.com/xgcm/xgcm/issues/624),
+  [#625](https://github.com/xgcm/xgcm/issues/625))
+  By [Henri Drake](https://github.com/hdrake).
+  Supersedes earlier work by [Julius Busecke](https://github.com/jbusecke) in
+  [#626](https://github.com/xgcm/xgcm/pull/626).
+
 - Removed the deprecated `keep_coords` keyword argument from grid operations
   (`Grid.interp`, `Grid.diff`, `Grid.min`, `Grid.max`, `Grid.cumsum`, etc.) and from
   `apply_as_grid_ufunc`. The behavior is now always that formerly given by

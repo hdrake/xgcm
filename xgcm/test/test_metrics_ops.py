@@ -24,10 +24,23 @@ from xgcm.test.datasets import datasets_grid_metric
 class TestParametrized:
     @pytest.mark.parametrize("axis", ["X", "Y"])
     @pytest.mark.parametrize(
-        "periodic", ["True", "False", {"X": True, "Y": False}, {"X": False, "Y": True}]
+        "boundary_init",
+        [
+            "fill",
+            "periodic",
+            {"X": "periodic", "Y": "fill"},
+            {"X": "fill", "Y": "periodic"},
+        ],
     )
     def test_weighted_metric(
-        self, funcname, grid_type, variable, axis, metric_weighted, periodic, boundary
+        self,
+        funcname,
+        grid_type,
+        variable,
+        axis,
+        metric_weighted,
+        boundary_init,
+        boundary,
     ):
         """tests the correct execution of weighted ops along a single axis"""
         # metric_weighted allows the interpolation of e.g. a surface flux to be conservative
@@ -38,7 +51,7 @@ class TestParametrized:
             ds,
             coords=coords,
             metrics=metrics,
-            periodic=periodic,
+            boundary=boundary_init,
             autoparse_metadata=False,
         )
         func = getattr(grid, funcname)
@@ -153,7 +166,7 @@ class TestDerivatives:
                 "Y": {"center": "YC", "left": "YG"},
             },
             metrics={("X",): ["dXC", "dXG"], ("Y",): ["dYC", "dYG"]},
-            periodic=True,
+            boundary="periodic",
             autoparse_metadata=False,
         )
 
@@ -171,7 +184,13 @@ class TestDerivatives:
         # test derivatives with synthetic C grid data
 
         ds, coords, metrics = datasets_grid_metric("C")
-        grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
+        grid = Grid(
+            ds,
+            coords=coords,
+            metrics=metrics,
+            boundary="periodic",
+            autoparse_metadata=False,
+        )
 
         # tracer point
         var = "tracer"
@@ -202,7 +221,13 @@ class TestDerivatives:
         # test derivatives with synthetic B grid data
 
         ds, coords, metrics = datasets_grid_metric("B")
-        grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
+        grid = Grid(
+            ds,
+            coords=coords,
+            metrics=metrics,
+            boundary="periodic",
+            autoparse_metadata=False,
+        )
 
         # tracer point
         var = "tracer"
@@ -246,17 +271,22 @@ def _expected_result(da, metric, grid, dim, axes, funcname, boundary=None):
 @pytest.mark.parametrize("funcname", ["integrate", "average", "cumint"])
 @pytest.mark.parametrize("boundary", ["fill", "extend"])
 @pytest.mark.parametrize(
-    "periodic",
-    [None, "True", "False", {"X": True, "Y": False}, {"X": False, "Y": True}],
+    "boundary_init",
+    [
+        "fill",
+        "periodic",
+        {"X": "periodic", "Y": "fill"},
+        {"X": "fill", "Y": "periodic"},
+    ],
 )
 class TestDifferentGridPositionsParametrized:
-    def test_bgrid(self, funcname, boundary, periodic):
+    def test_bgrid(self, funcname, boundary, boundary_init):
         ds, coords, metrics = datasets_grid_metric("B")
         grid = Grid(
             ds,
             coords=coords,
             metrics=metrics,
-            periodic=periodic,
+            boundary=boundary_init,
             autoparse_metadata=False,
         )
 
@@ -310,13 +340,13 @@ class TestDifferentGridPositionsParametrized:
             )
             assert_allclose(new, expected)
 
-    def test_cgrid(self, funcname, boundary, periodic):
+    def test_cgrid(self, funcname, boundary, boundary_init):
         ds, coords, metrics = datasets_grid_metric("C")
         grid = Grid(
             ds,
             coords=coords,
             metrics=metrics,
-            periodic=periodic,
+            boundary=boundary_init,
             autoparse_metadata=False,
         )
 
@@ -370,7 +400,7 @@ class TestDifferentGridPositionsParametrized:
             assert_allclose(new, expected)
 
     @pytest.mark.parametrize("axis", ["X", "Y", "Z"])
-    def test_missingaxis(self, axis, funcname, periodic, boundary):
+    def test_missingaxis(self, axis, funcname, boundary_init, boundary):
         # Error should be raised if application axes include dimension not in datasets
 
         ds, coords, metrics = datasets_grid_metric("C")
@@ -378,8 +408,9 @@ class TestDifferentGridPositionsParametrized:
         # delete all extraneous kwargs from fixture
         # TODO simplify parametrization so this isn't necessary
         del coords[axis]
-        if isinstance(periodic, dict) and axis in periodic:
-            del periodic[axis]
+        if isinstance(boundary_init, dict) and axis in boundary_init:
+            # copy so we don't mutate the shared parametrized dict
+            boundary_init = {k: v for k, v in boundary_init.items() if k != axis}
         del_metrics = [k for k in metrics.keys() if axis in k]
         for dm in del_metrics:
             del metrics[dm]
@@ -388,7 +419,7 @@ class TestDifferentGridPositionsParametrized:
             ds,
             coords=coords,
             metrics=metrics,
-            periodic=periodic,
+            boundary=boundary_init,
             autoparse_metadata=False,
         )
 
@@ -426,13 +457,13 @@ class TestDifferentGridPositionsParametrized:
             with pytest.raises(KeyError, match="Did not find axis"):
                 func(ds.tracer, ("X", "Y"), **kwargs)
 
-    def test_metric_axes_missing_from_array(self, funcname, periodic, boundary):
+    def test_metric_axes_missing_from_array(self, funcname, boundary_init, boundary):
         ds, coords, metrics = datasets_grid_metric("C")
         grid = Grid(
             ds,
             coords=coords,
             metrics=metrics,
-            periodic=periodic,
+            boundary=boundary_init,
             autoparse_metadata=False,
         )
 
