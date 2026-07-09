@@ -299,9 +299,7 @@ def test_cumsum_reverse_false_matches_default(nonperiodic_1d, boundary):
 def test_cumsum_reverse_per_axis_dict():
     """`reverse` accepts a per-axis dict, applied independently per axis."""
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(
-        ds, coords=coords, periodic=False, boundary="fill", autoparse_metadata=False
-    )
+    grid = Grid(ds, coords=coords, boundary="fill", autoparse_metadata=False)
     da = ds.tracer
 
     # reverse only along X (dict form), forward along Y
@@ -335,7 +333,6 @@ def test_cumint_reverse():
         ds,
         coords=coords,
         metrics=metrics,
-        periodic=False,
         boundary="fill",
         autoparse_metadata=False,
     )
@@ -359,7 +356,6 @@ def test_cumsum_reverse_rejects_non_integrated_axis():
         ds,
         coords=coords,
         metrics=metrics,
-        periodic=False,
         boundary="fill",
         autoparse_metadata=False,
     )
@@ -626,7 +622,11 @@ def test_keep_coords_removed():
     ds, coords, metrics = datasets_grid_metric("B")
     ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
     grid = Grid(
-        ds, coords=coords, metrics=metrics, boundary="periodic", autoparse_metadata=False
+        ds,
+        coords=coords,
+        metrics=metrics,
+        boundary="periodic",
+        autoparse_metadata=False,
     )
     for axis_name in grid.axes.keys():
         with pytest.raises(ValueError, match="has been removed"):
