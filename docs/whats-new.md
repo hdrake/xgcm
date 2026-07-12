@@ -18,8 +18,8 @@
   throughout the public API, to better reflect the process of array padding and avoid confusion with
   physical boundary conditions (e.g. an ocean-land boundary). The old names now raise an informative
   error rather than going through a deprecation cycle
-  ([#678](https://github.com/xgcm/xgcm/issues/678), [#696](https://github.com/xgcm/xgcm/pull/696),
-  [#761](https://github.com/xgcm/xgcm/pull/761)).
+  ([#696](https://github.com/xgcm/xgcm/pull/696), [#761](https://github.com/xgcm/xgcm/pull/761),
+  [#678](https://github.com/xgcm/xgcm/issues/678)).
   By [Nick Hodgskin](https://github.com/VeckoTheGecko).
 
 - Removed the `periodic` argument of `xgcm.Grid`. Boundary behavior is now
@@ -57,13 +57,13 @@
   `Grid.interp`, `Grid.diff`, `Grid.min`, `Grid.max`, `Grid.cumsum`, `Grid.derivative`,
   and `Grid.cumint`, which previously dropped non-dimension coordinates from the result
   and now retains them. Passing `keep_coords=` now raises a `ValueError`
-  ([#382](https://github.com/xgcm/xgcm/issues/382), [#745](https://github.com/xgcm/xgcm/pull/745)).
+  ([#745](https://github.com/xgcm/xgcm/pull/745), [#382](https://github.com/xgcm/xgcm/issues/382)).
   By [Henri Drake](https://github.com/hdrake).
 
 - `Axis` is no longer importable from the top-level `xgcm` namespace, making effective the
   removal announced in v0.9.0; internal use continues via `xgcm.axis.Axis`
-  ([#405](https://github.com/xgcm/xgcm/issues/405), [#557](https://github.com/xgcm/xgcm/pull/557),
-  [#743](https://github.com/xgcm/xgcm/pull/743)).
+  ([#557](https://github.com/xgcm/xgcm/pull/557), [#743](https://github.com/xgcm/xgcm/pull/743),
+  [#405](https://github.com/xgcm/xgcm/issues/405)).
   By [Henri Drake](https://github.com/hdrake).
 
 ### Internal Changes
@@ -91,11 +91,12 @@
 
 - Document which environment runs the documentation notebooks (`transform.ipynb`, `grid_metrics.ipynb`).
   The existing `docs` pixi environment now bundles Jupyter Lab and can be launched with `pixi run notebooks`,
-  and the notebooks and contributor guide note the required dependencies ([#667](https://github.com/xgcm/xgcm/issues/667)).
+  and the notebooks and contributor guide note the required dependencies
+  ([#750](https://github.com/xgcm/xgcm/pull/750), [#667](https://github.com/xgcm/xgcm/issues/667)).
 
 - xgcm now follows [Intended Effort Versioning (EffVer)](https://jacobtomlinson.dev/effver/); the policy
   is documented in the contributor guide and advertised by a README badge
-  ([#679](https://github.com/xgcm/xgcm/issues/679), [#680](https://github.com/xgcm/xgcm/pull/680), [#742](https://github.com/xgcm/xgcm/pull/742)).
+  ([#680](https://github.com/xgcm/xgcm/pull/680), [#742](https://github.com/xgcm/xgcm/pull/742), [#679](https://github.com/xgcm/xgcm/issues/679)).
   By [Nick Hodgskin](https://github.com/VeckoTheGecko) and [Henri Drake](https://github.com/hdrake).
 
 - Refresh the `grid_metrics.ipynb` and `transform.ipynb` documentation notebooks and fetch the
@@ -121,14 +122,14 @@
 - `Axis` now raises a `ValueError` immediately if the same dimension name is
   assigned to more than one position (e.g. `{'center': 'x', 'outer': 'x'}`),
   rather than silently accepting the invalid configuration
-  ([#634](https://github.com/xgcm/xgcm/issues/634), [#752](https://github.com/xgcm/xgcm/pull/752)).
+  ([#752](https://github.com/xgcm/xgcm/pull/752), [#634](https://github.com/xgcm/xgcm/issues/634)).
   By [Mike German](https://github.com/steps-re).
 
 - Respect the `fill_value` bound on the `@as_grid_ufunc` decorator (or passed to `GridUFunc`). It was
   silently dropped in `GridUFunc.__call__` — only a call-time `fill_value` took effect, so a bound value
   fell through to the `apply_as_grid_ufunc` default of `0`. The bound value is now forwarded (and still
   overridable at call time), mirroring the other bound boundary kwargs
-  ([#652](https://github.com/xgcm/xgcm/issues/652), [#710](https://github.com/xgcm/xgcm/pull/710)).
+  ([#710](https://github.com/xgcm/xgcm/pull/710), [#652](https://github.com/xgcm/xgcm/issues/652)).
   By [Vincent Gao](https://github.com/gaoflow).
 
 - Fix `xgcm.padding.pad(..., other_component=...)` (and hence vector `Grid.diff`/`Grid.interp`)
@@ -139,7 +140,7 @@
   heat flux was `-1.6e9` (bare) versus `0` (dict). The bare form now recovers the component's axis
   from its own staggering and runs the same rotation/sign-flip logic as the dict form, giving
   identical output, and raises a clear error when the axis cannot be inferred (e.g. a cell-centre
-  field) ([#748](https://github.com/xgcm/xgcm/issues/748), [#749](https://github.com/xgcm/xgcm/pull/749)).
+  field) ([#749](https://github.com/xgcm/xgcm/pull/749), [#748](https://github.com/xgcm/xgcm/issues/748)).
   By [Henri Drake](https://github.com/hdrake).
 
 - Fix `Grid.transform(..., method="conservative")` falsely raising `NotImplementedError`
@@ -154,7 +155,7 @@
   operated-on core dimension to the end and never moved it back, so an input with dims
   `('tile', 'j', 'i')` came back as `('tile', 'i', 'j')`. The output now follows the input
   ordering (with the core dim renamed in-place if it changes grid position)
-  ([#533](https://github.com/xgcm/xgcm/issues/533)).
+  ([#722](https://github.com/xgcm/xgcm/pull/722), [#533](https://github.com/xgcm/xgcm/issues/533)).
 
 - Grid operations (e.g. `Grid.interp`, `Grid.diff`, `Grid.cumsum`) no longer drop or clobber non-core
   coordinates carried on the input `DataArray`. Padding strips all coordinates and they were only restored
@@ -162,14 +163,14 @@
   coordinate) was lost, and a coordinate present on both was overwritten with the grid's (possibly stale)
   copy. Coordinates on non-core dimensions are now preserved from the input array (first input wins for
   repeated names), while the newly position-shifted core-dim coordinate still comes from the grid
-  ([#496](https://github.com/xgcm/xgcm/issues/496), [#575](https://github.com/xgcm/xgcm/issues/575)).
+  ([#721](https://github.com/xgcm/xgcm/pull/721), [#496](https://github.com/xgcm/xgcm/issues/496), [#575](https://github.com/xgcm/xgcm/issues/575)).
 
 - Fix `TypeError: dict.copy() takes no keyword arguments` when applying vector grid ufuncs (e.g.
   `diff_2d_vector`, `interp_2d_vector`) on grids *without* face connections. A vector component supplied
   as a `{axis_name: DataArray}` dict was forwarded unchanged by `xgcm.padding.pad` to the basic padding
   routine `_pad_basic` (which expects a `DataArray`); `pad` now unpacks the inner `DataArray` on the
   non-face-connection path, mirroring the existing face-connection path
-  ([#581](https://github.com/xgcm/xgcm/issues/581)).
+  ([#720](https://github.com/xgcm/xgcm/pull/720), [#581](https://github.com/xgcm/xgcm/issues/581)).
   By [Henri Drake](https://github.com/hdrake).
 
 - Fix vector-component `Grid.diff`/`Grid.interp` (and `diff_2d_vector`/`interp_2d_vector`) crashing with
@@ -178,7 +179,7 @@
   `map_overlap` path still assumed the component was a bare `DataArray` when setting up the dask overlap
   and when reading padded chunk sizes; it now unwraps the inner `DataArray` first, so chunked vector
   diff/interp follows the correct face-connection logic
-  ([#704](https://github.com/xgcm/xgcm/issues/704), [#705](https://github.com/xgcm/xgcm/pull/705)).
+  ([#705](https://github.com/xgcm/xgcm/pull/705), [#704](https://github.com/xgcm/xgcm/issues/704)).
   By [Anthony Meza](https://github.com/anthony-meza).
 
 - Fix `diff_2d_vector`/`interp_2d_vector` (and the equivalent vector-component `Grid.diff`/`Grid.interp`)
@@ -186,7 +187,7 @@
   along its core dimension. The `map_overlap` path now derives the output chunk spec from the padded,
   rechunked array, so face-connection padding that rechunks non-core dimensions no longer raises
   `ValueError: Dimension 0 has 2 blocks, adjust_chunks specified with 1 blocks`
-  ([#708](https://github.com/xgcm/xgcm/issues/708)).
+  ([#709](https://github.com/xgcm/xgcm/pull/709), [#708](https://github.com/xgcm/xgcm/issues/708)).
   By [Henri Drake](https://github.com/hdrake).
 
 - Fix non-deterministic, hash-seed-dependent halo values in face-connection padding that could yield
