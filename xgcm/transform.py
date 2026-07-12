@@ -378,9 +378,11 @@ def transform(
     axis = grid.axes[axis_name]
 
     # raise error if axis is periodic
-    if axis.boundary == "periodic":
+    if axis.padding == "periodic":
         raise ValueError(
-            "`transform` can only be used on axes that are non-periodic. Pass `periodic=False` to `xgcm.Grid`."
+            "`transform` can only be used on axes that are non-periodic. Set a "
+            "non-periodic boundary (e.g. `padding='fill'`, or leave it unset) "
+            "for this axis on `xgcm.Grid`."
         )
 
     # raise error if the target values are not provided as xr.dataarray
@@ -466,7 +468,7 @@ def transform(
         )
     elif method == "conservative":
         if isinstance(target, xr.DataArray):
-            if target_dim is not None and len(target_dim) > 1:
+            if len(target.dims) > 1:
                 raise NotImplementedError(
                     "Conservative transformation is not yet supported for multi-dimensional targets."
                 )
@@ -492,7 +494,7 @@ def transform(
                 "The `target data` input is not located on the cell bounds. This method will continue with linear interpolation with repeated boundary values. For most accurate results provide values on cell bounds.",
                 UserWarning,
             )
-            target_data = grid.interp(target_data, axis_name, boundary="extend")
+            target_data = grid.interp(target_data, axis_name, padding="extend")
             # This seems to end up with chunks along the axis dimension.
             # Rechunk to keep xr.apply_func from complaining.
             # TODO: This should be made obsolete, when the internals are refactored using numba
