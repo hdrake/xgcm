@@ -7,13 +7,13 @@
 
 - Add an **experimental** bipolar north-fold boundary condition for tripolar ocean grids
   (MOM6, NEMO, MOM5,
-  Oceananigans), requested as a per-axis boundary on the fold axis, e.g.
-  `boundary={"X": "periodic", "Y": {"fold": "corner"}}`. The northern edge of the logical grid
+  Oceananigans), requested as a per-axis `padding` value on the fold axis, e.g.
+  `padding={"X": "periodic", "Y": {"fold": "corner"}}`. The northern edge of the logical grid
   folds onto itself along the bipolar seam joining the two northern poles: the zonal axis is
   mirrored about the pole and vector components reverse sign, so `interp`/`diff`/`derivative`
   work across the Arctic seam. The pivot (`center`/`T`, `corner`/`F`, `U`, `V`) names the
   staggered position the pole sits on. Only the north edge folds; the south edge of a fold
-  axis honours a per-call `boundary` override when given, otherwise a configurable `south`
+  axis honours a per-call `padding` override when given, otherwise a configurable `south`
   mode (default `fill`). This feature is experimental: its API and numerical behavior may
   change, and constructing a `Grid` with a fold emits a `UserWarning`
   ([#194](https://github.com/xgcm/xgcm/issues/194),
@@ -22,6 +22,15 @@
 
 ### Bug Fixes
 
+- `Grid.get_metric` (and the operations built on it, e.g. `Grid.integrate` and
+  `Grid.average`) no longer emits spurious "Metric ... being interpolated ..."
+  `UserWarning`s when an exact-position metric combination exists but is not the
+  first candidate tried. The search now looks for an exact-position match across
+  all candidate combinations before falling back to interpolation, and warns at
+  most once. The returned metric is unchanged
+  ([#758](https://github.com/xgcm/xgcm/pull/758)).
+  By [Henri Drake](https://github.com/hdrake).
+
 - `Axis` now raises a `ValueError` immediately if the same dimension name is
   assigned to more than one position (e.g. `{'center': 'x', 'outer': 'x'}`),
   rather than silently accepting the invalid configuration
@@ -29,6 +38,39 @@
   By [Mike German](https://github.com/steps-re).
 
 ### Breaking Changes
+
+- The `boundary` argument (and `boundary_width`) has been renamed to `padding` (and `padding_width`)
+  throughout the public API, to better reflect the process of array padding and avoid confusion with
+  physical boundary conditions (e.g. an ocean-land boundary). The old names now raise an informative
+  error rather than going through a deprecation cycle
+  ([#678](https://github.com/xgcm/xgcm/issues/678), [#696](https://github.com/xgcm/xgcm/pull/696)).
+  By [Nick Hodgskin](https://github.com/VeckoTheGecko).
+
+- Removed the `periodic` argument of `xgcm.Grid`. Boundary behavior is now
+  controlled exclusively by the `boundary` argument. Migrate as follows:
+  `periodic=True` → `boundary="periodic"`; `periodic=False` → `boundary="fill"`
+  (the previous implicit mapping); and the per-axis list form
+  `periodic=["X"]` → a per-axis dict, e.g.
+  `boundary={"X": "periodic", "Y": "fill"}`. Passing `periodic=` now raises an
+  informative `ValueError` naming the replacement.
+
+  The default boundary semantics have also changed: previously a `Grid`
+  constructed without any boundary specification defaulted to *periodic* along
+  every axis (silently wrapping), which was the root of several boundary-condition
+  bugs. Now, an axis with no boundary specified applies *no* boundary condition:
+  operations that require padding along such an axis raise an informative error
+  instead of silently wrapping. Pass `boundary="periodic"` to recover the old
+  wrap-around behavior. This makes the default explicitly non-periodic and fixes
+  cases where a declared non-periodic axis could still wrap.
+  ([#746](https://github.com/xgcm/xgcm/pull/746);
+  closes [#195](https://github.com/xgcm/xgcm/issues/195),
+  [#509](https://github.com/xgcm/xgcm/issues/509),
+  [#604](https://github.com/xgcm/xgcm/issues/604),
+  [#624](https://github.com/xgcm/xgcm/issues/624),
+  [#625](https://github.com/xgcm/xgcm/issues/625))
+  By [Henri Drake](https://github.com/hdrake).
+  Supersedes earlier work by [Julius Busecke](https://github.com/jbusecke) in
+  [#626](https://github.com/xgcm/xgcm/pull/626).
 
 - Removed the deprecated `keep_coords` keyword argument from grid operations
   (`Grid.interp`, `Grid.diff`, `Grid.min`, `Grid.max`, `Grid.cumsum`, etc.) and from

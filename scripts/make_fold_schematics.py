@@ -189,12 +189,12 @@ def _halo_source(nx):
     grid = Grid(
         xr.Dataset(coords=coords),
         coords={"X": {"center": "xh"}, "Y": {"center": "yh"}},
-        boundary={"X": "periodic", "Y": {"fold": "corner"}},
+        padding={"X": "periodic", "Y": {"fold": "corner"}},
         autoparse_metadata=False,
     )
     # encode each cell with its column index, fold one halo row, read the source
     enc = xr.DataArray(np.tile(np.arange(nx), (3, 1)), dims=["yh", "xh"], coords=coords)
-    halo = pad(enc, grid, boundary_width={"Y": (0, 1)}).isel(yh=-1).values
+    halo = pad(enc, grid, padding_width={"Y": (0, 1)}).isel(yh=-1).values
     return halo.astype(int)  # halo[col] = interior column it came from
 
 

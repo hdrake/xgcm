@@ -1,10 +1,10 @@
-"""Tests for the bipolar north-fold boundary.
+"""Tests for the bipolar north-fold padding.
 
 The global grids these serve are *tripolar* (South Pole + two Arctic poles); the
 north fold itself is *bipolar* -- its seam is the line joining the two northern
-poles. A fold boundary is requested as a per-axis ``boundary`` value on the
+poles. A fold padding is requested as a per-axis ``padding`` value on the
 (single tile) fold axis -- the meridional "Y" axis -- e.g.
-``boundary={"X": "periodic", "Y": {"fold": "corner"}}``. The northern edge of
+``padding={"X": "periodic", "Y": {"fold": "corner"}}``. The northern edge of
 the grid folds onto itself: the seam (zonal "X") axis is mirrored about the pole
 and vector components reverse sign. See ``xgcm/padding.py`` for the pivot/offset
 conventions.
@@ -51,7 +51,7 @@ def _grid(ds, pivot):
             "X": {"center": "xh", "left": "xl"},
             "Y": {"center": "yh", "left": "yl"},
         },
-        boundary={"X": "periodic", "Y": {"fold": pivot}},
+        padding={"X": "periodic", "Y": {"fold": pivot}},
         autoparse_metadata=False,
     )
 
@@ -96,7 +96,7 @@ def test_fold_requires_periodic_seam():
         Grid(
             ds,
             coords={"X": {"center": "xh"}, "Y": {"center": "yh"}},
-            boundary={"X": "fill", "Y": {"fold": "corner"}},
+            padding={"X": "fill", "Y": {"fold": "corner"}},
             autoparse_metadata=False,
         )
 
@@ -107,10 +107,10 @@ def test_fold_seam_axis_inferred():
     assert grid._folds["Y"]["seam_axis"] == "X"
 
 
-def test_fold_seam_ignores_defaulted_periodic_vertical():
-    # A vertical axis left unspecified defaults to periodic, but must NOT be
-    # mistaken for the seam: only the *explicitly* periodic axis (X) is a
-    # candidate. The grid must construct and infer X as the seam.
+def test_fold_seam_ignores_unspecified_vertical():
+    # A vertical axis left unspecified takes ``padding=None`` (no boundary) and
+    # must NOT be mistaken for the seam: only an *explicitly* periodic axis (X)
+    # is a candidate. The grid must construct and infer X as the seam.
     ds = _make_ds()
     ds = ds.assign_coords(zh=np.arange(3))
     grid = Grid(
@@ -118,13 +118,13 @@ def test_fold_seam_ignores_defaulted_periodic_vertical():
         coords={
             "X": {"center": "xh", "left": "xl"},
             "Y": {"center": "yh", "left": "yl"},
-            "Z": {"center": "zh"},  # boundary unspecified -> defaults periodic
+            "Z": {"center": "zh"},  # padding unspecified -> None (no boundary)
         },
-        boundary={"X": "periodic", "Y": {"fold": "corner"}},
+        padding={"X": "periodic", "Y": {"fold": "corner"}},
         autoparse_metadata=False,
     )
     assert grid._folds["Y"]["seam_axis"] == "X"
-    # the unspecified vertical still defaulted to periodic, it is just not a seam
+    # the unspecified vertical is not periodic, hence not a seam candidate
     assert "Z" not in grid._explicitly_periodic_axes
 
 
@@ -140,7 +140,7 @@ def test_fold_seam_ambiguous_when_two_explicit_periodic():
                 "Y": {"center": "yh", "left": "yl"},
                 "Z": {"center": "zh"},
             },
-            boundary={"X": "periodic", "Z": "periodic", "Y": {"fold": "corner"}},
+            padding={"X": "periodic", "Z": "periodic", "Y": {"fold": "corner"}},
             autoparse_metadata=False,
         )
 
@@ -183,7 +183,7 @@ def test_fold_rejects_face_connections():
                 "X": {"center": "xh", "left": "xl"},
                 "Y": {"center": "yh", "left": "yl"},
             },
-            boundary={"X": "periodic", "Y": {"fold": "corner"}},
+            padding={"X": "periodic", "Y": {"fold": "corner"}},
             face_connections=fc,
             autoparse_metadata=False,
         )
@@ -208,11 +208,11 @@ def test_inner_seam_position_center_pivot_raises(pivot):
             "X": {"center": "xh", "inner": "xi"},
             "Y": {"center": "yh", "left": "yl"},
         },
-        boundary={"X": "periodic", "Y": {"fold": pivot}},
+        padding={"X": "periodic", "Y": {"fold": pivot}},
         autoparse_metadata=False,
     )
     with pytest.raises(NotImplementedError, match="inner.*incompatible|incompatible"):
-        pad(ds.f, grid, boundary_width={"Y": (0, 1)})
+        pad(ds.f, grid, padding_width={"Y": (0, 1)})
 
 
 # ---------------------------------------------------------------------------
@@ -223,12 +223,12 @@ def test_corner_pivot_all_positions():
     grid = _grid(ds, "corner")  # seam=edge, fold=edge
 
     # scalar c: seam=center -> no roll; fold=center, pivot fold=edge -> no skip
-    out = pad(ds.c, grid, boundary_width={"Y": (0, 1)})
+    out = pad(ds.c, grid, padding_width={"Y": (0, 1)})
     np.testing.assert_allclose(out.isel(yh=-1).values, ds.c.isel(yh=-1).values[::-1])
 
     # u (vector): seam=edge -> reverse+roll(1); fold=center skip 0; sign flip
     out = pad(
-        {"X": ds.u}, grid, boundary_width={"Y": (0, 1)}, other_component={"Y": ds.v}
+        {"X": ds.u}, grid, padding_width={"Y": (0, 1)}, other_component={"Y": ds.v}
     )
     np.testing.assert_allclose(
         out.isel(yh=-1).values, -np.roll(ds.u.isel(yh=-1).values[::-1], 1)
@@ -236,12 +236,12 @@ def test_corner_pivot_all_positions():
 
     # v (vector): seam=center -> no roll; fold=edge skip 1; sign flip
     out = pad(
-        {"Y": ds.v}, grid, boundary_width={"Y": (0, 1)}, other_component={"X": ds.u}
+        {"Y": ds.v}, grid, padding_width={"Y": (0, 1)}, other_component={"X": ds.u}
     )
     np.testing.assert_allclose(out.isel(yl=-1).values, -ds.v.isel(yl=-2).values[::-1])
 
     # q (scalar corner): seam=edge roll(1); fold=edge skip 1
-    out = pad(ds.q, grid, boundary_width={"Y": (0, 1)})
+    out = pad(ds.q, grid, padding_width={"Y": (0, 1)})
     np.testing.assert_allclose(
         out.isel(yl=-1).values, np.roll(ds.q.isel(yl=-2).values[::-1], 1)
     )
@@ -252,10 +252,10 @@ def test_u_pivot_redundant_row():
     grid = _grid(ds, "U")  # seam=edge, fold=center
 
     # tracer fold=center == pivot fold -> skip the duplicated top row
-    out = pad(ds.c, grid, boundary_width={"Y": (0, 1)})
+    out = pad(ds.c, grid, padding_width={"Y": (0, 1)})
     np.testing.assert_allclose(out.isel(yh=-1).values, ds.c.isel(yh=-2).values[::-1])
     # v fold=edge != pivot fold -> no skip (sources the top row)
-    out = pad(ds.v, grid, boundary_width={"Y": (0, 1)})
+    out = pad(ds.v, grid, padding_width={"Y": (0, 1)})
     np.testing.assert_allclose(out.isel(yl=-1).values, ds.v.isel(yl=-1).values[::-1])
 
 
@@ -278,12 +278,12 @@ def test_center_and_edge_mirror_same_pole():
     grid = Grid(
         ds,
         coords={"X": {"center": "xh", "left": "xl"}, "Y": {"center": "yh"}},
-        boundary={"X": "periodic", "Y": {"fold": "corner"}},
+        padding={"X": "periodic", "Y": {"fold": "corner"}},
         autoparse_metadata=False,
     )
     # corner pivot -> pole at x=0 -> mirror(x) = -x (periodic on [0, Nx))
-    halo_c = pad(ds.c, grid, boundary_width={"Y": (0, 1)}).isel(yh=-1).values
-    halo_u = pad(ds.u, grid, boundary_width={"Y": (0, 1)}).isel(yh=-1).values
+    halo_c = pad(ds.c, grid, padding_width={"Y": (0, 1)}).isel(yh=-1).values
+    halo_u = pad(ds.u, grid, padding_width={"Y": (0, 1)}).isel(yh=-1).values
     np.testing.assert_allclose(halo_c, F((-xc) % Nx), atol=1e-12)
     np.testing.assert_allclose(halo_u, F((-xe) % Nx), atol=1e-12)
 
@@ -311,13 +311,13 @@ def test_outer_symmetric_memory():
             "X": {"center": "xh", "outer": "xq"},
             "Y": {"center": "yh", "outer": "yq"},
         },
-        boundary={"X": "periodic", "Y": {"fold": "corner"}},
+        padding={"X": "periodic", "Y": {"fold": "corner"}},
         autoparse_metadata=False,
     )
     xc = np.arange(Nx) + 0.5
-    halo_v = pad(ds.v, grid, boundary_width={"Y": (0, 1)}).isel(yq=-1).values
+    halo_v = pad(ds.v, grid, padding_width={"Y": (0, 1)}).isel(yq=-1).values
     np.testing.assert_allclose(halo_v, F((-xc) % Nx, Ny - 1), atol=1e-12)
-    halo_q = pad(ds.q, grid, boundary_width={"Y": (0, 1)}).isel(yq=-1).values
+    halo_q = pad(ds.q, grid, padding_width={"Y": (0, 1)}).isel(yq=-1).values
     np.testing.assert_allclose(
         halo_q, np.array([F((-j) % Nx, Ny - 1) for j in range(Nx + 1)]), atol=1e-12
     )
@@ -330,10 +330,10 @@ def test_vector_flips_scalar_does_not():
     ds = _make_ds()
     grid = _grid(ds, "corner")
     # same array, once as scalar, once as a vector component
-    scal = pad(ds.v, grid, boundary_width={"Y": (0, 1)}).isel(yl=-1).values
+    scal = pad(ds.v, grid, padding_width={"Y": (0, 1)}).isel(yl=-1).values
     vec = (
         pad(
-            {"Y": ds.v}, grid, boundary_width={"Y": (0, 1)}, other_component={"X": ds.u}
+            {"Y": ds.v}, grid, padding_width={"Y": (0, 1)}, other_component={"X": ds.u}
         )
         .isel(yl=-1)
         .values
@@ -401,9 +401,9 @@ def test_interp_diff_across_seam_known_answer():
     np.testing.assert_allclose(gridU.diff(ds.v, "Y").values, exp_d)
 
 
-def test_fold_south_edge_respects_per_call_boundary():
+def test_fold_south_edge_respects_per_call_padding():
     # the north always folds (topology), but the south edge is an ordinary
-    # boundary: a per-call `boundary` must override the construction-time `south`
+    # boundary: a per-call `padding` must override the construction-time `south`
     # mode (default "fill"), while the north halo stays the folded mirror.
     ds = _make_ds()
     grid = _grid(ds, "corner")  # default south mode is "fill"
@@ -411,8 +411,8 @@ def test_fold_south_edge_respects_per_call_boundary():
     out = pad(
         ds.c,
         grid,
-        boundary_width={"Y": (1, 1)},
-        boundary={"Y": "extend"},
+        padding_width={"Y": (1, 1)},
+        padding={"Y": "extend"},
     )
     # south edge: per-call "extend" -> repeats the southern interior row
     np.testing.assert_allclose(out.isel(yh=0).values, ds.c.isel(yh=0).values)
@@ -420,14 +420,14 @@ def test_fold_south_edge_respects_per_call_boundary():
     np.testing.assert_allclose(out.isel(yh=-1).values, ds.c.isel(yh=-1).values[::-1])
     # default (no override) south stays "fill" (zeros), confirming the override
     # above actually changed something
-    default = pad(ds.c, grid, boundary_width={"Y": (1, 0)})
+    default = pad(ds.c, grid, padding_width={"Y": (1, 0)})
     np.testing.assert_allclose(default.isel(yh=0).values, 0.0)
 
 
 def test_multi_row_halo():
     ds = _make_ds()
     grid = _grid(ds, "corner")  # center field: skip 0, no roll
-    out = pad(ds.c, grid, boundary_width={"Y": (0, 2)})
+    out = pad(ds.c, grid, padding_width={"Y": (0, 2)})
     # consecutive halo rows source consecutive interior rows from the top down
     np.testing.assert_allclose(out.isel(yh=-2).values, ds.c.isel(yh=-1).values[::-1])
     np.testing.assert_allclose(out.isel(yh=-1).values, ds.c.isel(yh=-2).values[::-1])
@@ -440,17 +440,17 @@ def test_north_halo_wider_than_interior_raises():
     ds = _make_ds()
     grid = _grid(ds, "corner")  # center field: skip 0 -> Ny interior rows
     # in-range widths still work (boundary, exactly Ny)
-    out = pad(ds.c, grid, boundary_width={"Y": (0, Ny)})
+    out = pad(ds.c, grid, padding_width={"Y": (0, Ny)})
     assert out.sizes["yh"] == 2 * Ny
     # one row too many -> clear error naming axis, request, and max available
     with pytest.raises(ValueError, match="exceeds the .* interior row"):
-        pad(ds.c, grid, boundary_width={"Y": (0, Ny + 1)})
+        pad(ds.c, grid, padding_width={"Y": (0, Ny + 1)})
 
 
 def test_fold_with_simultaneous_seam_padding():
     ds = _make_ds()
     grid = _grid(ds, "corner")
-    out = pad(ds.c, grid, boundary_width={"X": (1, 1), "Y": (0, 1)})
+    out = pad(ds.c, grid, padding_width={"X": (1, 1), "Y": (0, 1)})
     assert out.shape == (Ny + 1, Nx + 2)
     # the folded north row is itself wrapped periodically along the seam axis
     base = ds.c.isel(yh=-1).values[::-1]
@@ -462,11 +462,11 @@ def test_fold_with_simultaneous_seam_padding():
 def test_fold_dask_matches_numpy(chunks):
     ds = _make_ds()
     grid_np = _grid(ds, "corner")
-    expected = pad(ds.c, grid_np, boundary_width={"Y": (0, 1)})
+    expected = pad(ds.c, grid_np, padding_width={"Y": (0, 1)})
 
     dsc = ds.chunk(chunks)
     grid_da = _grid(dsc, "corner")
-    out = pad(dsc.c, grid_da, boundary_width={"Y": (0, 1)})
+    out = pad(dsc.c, grid_da, padding_width={"Y": (0, 1)})
     import dask
 
     assert dask.is_dask_collection(out.data)
