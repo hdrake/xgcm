@@ -99,7 +99,8 @@ class Grid:
             A dictionary of dictionaries specifying default grid position
             shifts (e.g. ``{'X': {'center': 'left', 'left': 'center'}}``)
         padding : {None, 'fill', 'extend', 'periodic', dict}, optional
-            A flag indicating how to handle padding. The default (``None``)
+            A flag indicating how to handle padding at exterior grid
+            boundaries. The default (``None``)
             applies no boundary condition: operations that require padding along
             such an axis raise an informative error instead of silently wrapping.
             (This is a change from xgcm < 1.0, where the grid defaulted to
@@ -586,7 +587,7 @@ class Grid:
         like : DataArray
             DataArray with desired grid positions for source array
         padding : {None, 'fill', 'extend', 'periodic', dict}, optional
-            A flag indicating how to handle padding:
+            A flag indicating how to handle padding at exterior grid boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
@@ -821,10 +822,10 @@ class Grid:
 
             ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)``.
         padding_width : Dict[str: Tuple[int, int]
-            The widths of the boundaries at the edge of each array.
+            The number of values used to pad the two sides of each array.
             Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
         padding : {None, 'fill', 'extend', 'periodic', dict}, optional
-            A flag indicating how to handle padding:
+            A flag indicating how to handle padding at exterior grid boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
@@ -904,7 +905,7 @@ class Grid:
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
         padding : None or str or dict, optional
-            A flag indicating how to handle boundaries:
+            A flag indicating how to handle padding at exterior grid boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
@@ -957,7 +958,7 @@ class Grid:
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
         padding : None or str or dict, optional
-            A flag indicating how to handle boundaries:
+            A flag indicating how to handle padding at exterior grid boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
@@ -1009,7 +1010,7 @@ class Grid:
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
         padding : None or str or dict, optional
-            A flag indicating how to handle boundaries:
+            A flag indicating how to handle padding at exterior grid boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
@@ -1062,7 +1063,7 @@ class Grid:
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
         padding : None or str or dict, optional
-            A flag indicating how to handle boundaries:
+            A flag indicating how to handle padding at exterior grid boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
@@ -1128,7 +1129,7 @@ class Grid:
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
         padding : None or str or dict, optional
-            A flag indicating how to handle boundaries:
+            A flag indicating how to handle padding at exterior grid boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
@@ -1276,7 +1277,7 @@ class Grid:
                 # `left` position (the left cell faces). This is the mirror image
                 # of the forward case: trimming happens at the low-index end
                 # (`slice(1, None)`) and padding at the high-index end (the upper
-                # boundary_width), so the position shifts stay consistent.
+                # padding_width), so the position shifts stay consistent.
                 if (pos == "center" and ax_to == "left") or (
                     pos == "right" and ax_to == "center"
                 ):
@@ -1428,7 +1429,7 @@ class Grid:
             The direction in which to shift the array. If not specified,
             default will be used.
         padding : {None, 'fill', 'extend'}
-            A flag indicating how to handle padding:
+            A flag indicating how to handle padding at exterior grid boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
@@ -1466,7 +1467,7 @@ class Grid:
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
         padding : None or str or dict, optional
-            A flag indicating how to handle boundaries:
+            A flag indicating how to handle padding at exterior grid boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
@@ -1540,7 +1541,7 @@ class Grid:
             If not specified, default will be used.
             Optionally a dict with separate values for each axis can be passed (see example)
         padding : None or str or dict, optional
-            A flag indicating how to handle boundaries:
+            A flag indicating how to handle padding at exterior grid boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.

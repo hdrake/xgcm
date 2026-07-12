@@ -136,7 +136,7 @@ class TestPadding:
 
 def test_padding_zero_width_no_boundary_axis():
     # Regression test: when one axis has non-zero padding width and another axis
-    # is requested with zero width but has no padding condition (``padding=None``,
+    # is requested with zero width but has no boundary condition (``padding=None``,
     # the new default), padding must not error. Previously ``None`` mapped to
     # 'wrap' and the zero-width pad was a harmless no-op; after that mapping was
     # removed the zero-width axis hit a bare ``KeyError(None)`` in ``_pad_basic``.
@@ -292,7 +292,7 @@ def _prepad_right_right_swap_axis(da, padding_width, fill_value, x="x", y="y"):
     )
 
     # Now pad each face according to the swapped axes, so that the connected slices match
-    # This is only relevant when the boundary width is not equal for all sides.
+    # This is only relevant when the padding width is not equal for all sides.
     face_0_padded_swapped = face_0.pad(
         **{
             x: (padding_width["Y"][0], 0),
@@ -339,7 +339,7 @@ def _prepad_right_right_swap_axis(da, padding_width, fill_value, x="x", y="y"):
     ],
 )
 class TestPaddingFaceConnection:
-    # TODO: Test that an error is raised if the boundary width exceeds the array shape.
+    # TODO: Test that an error is raised if the padding width exceeds the array shape.
     def test_face_connections_right_left_same_axis(
         self, padding_width, ds_faces, fill_value
     ):
@@ -352,7 +352,7 @@ class TestPaddingFaceConnection:
         grid = Grid(ds_faces, face_connections=face_connections)
         data = ds_faces.data_c
 
-        # fill in zeros for y boundary width if not given
+        # fill in zeros for y padding width if not given
         padding_width["Y"] = padding_width.get("Y", (0, 0))
 
         # # restrict data here, so its easier to see the output
@@ -375,7 +375,7 @@ class TestPaddingFaceConnection:
                     x=slice(
                         -padding_width["X"][0],
                         None if padding_width["X"][0] > 0 else 0,
-                        # this is a bit annoying. if the boundary width on this side is
+                        # this is a bit annoying. if the padding width on this side is
                         # 0 I want nothing to be padded. but slice(0,None) pads the whole array...
                     )
                 ),
@@ -407,7 +407,7 @@ class TestPaddingFaceConnection:
         grid = Grid(ds_faces, face_connections=face_connections)
         data = ds_faces.data_c
 
-        # fill in zeros for y boundary width if not given
+        # fill in zeros for y padding width if not given
         padding_width["Y"] = padding_width.get("Y", (0, 0))
 
         # # restrict data here, so its easier to see the output
@@ -474,7 +474,7 @@ class TestPaddingFaceConnection:
         )
         data = ds_faces.data_c
 
-        # fill in zeros for y boundary width if not given
+        # fill in zeros for y padding width if not given
         padding_width["Y"] = padding_width.get("Y", (0, 0))
 
         # restrict data here, so its easier to see the output
@@ -502,7 +502,7 @@ class TestPaddingFaceConnection:
             x=slice(
                 -padding_width["Y"][0],
                 None if padding_width["Y"][0] > 0 else 0,
-                # this is a bit annoying. if the boundary width on this side is
+                # this is a bit annoying. if the padding width on this side is
                 # 0 I want nothing to be padded. but slice(0,None) pads the whole array...
             )
         )
@@ -537,7 +537,7 @@ class TestPaddingFaceConnection:
     def test_face_connections_right_right_swap_axis(
         self, padding_width, ds_faces, fill_value
     ):
-        # set a default for boundary widths
+        # set a default for padding widths
         padding_width = {k: padding_width.get(k, (0, 0)) for k in ["X", "Y"]}
 
         face_connections = {
@@ -552,7 +552,7 @@ class TestPaddingFaceConnection:
         )
         data = ds_faces.data_c
 
-        # fill in zeros for y boundary width if not given
+        # fill in zeros for y padding width if not given
         padding_width["Y"] = padding_width.get("Y", (0, 0))
 
         # restrict data here, so its easier to see the output
@@ -573,7 +573,7 @@ class TestPaddingFaceConnection:
             y=slice(
                 -padding_width["X"][1],
                 None if padding_width["X"][1] > 0 else 0,
-                # this is a bit annoying. if the boundary width on this side is
+                # this is a bit annoying. if the padding width on this side is
                 # 0 I want nothing to be padded. but slice(0,None) pads the whole array...
             )
         )
@@ -582,7 +582,7 @@ class TestPaddingFaceConnection:
             x=slice(
                 -padding_width["Y"][1],
                 None if padding_width["Y"][1] > 0 else 0,
-                # this is a bit annoying. if the boundary width on this side is
+                # this is a bit annoying. if the padding width on this side is
                 # 0 I want nothing to be padded. but slice(0,None) pads the whole array...
             )
         )
@@ -628,7 +628,7 @@ class TestPaddingFaceConnection:
         u = ds_faces.u
         v = ds_faces.v
 
-        # fill in zeros for y boundary width if not given
+        # fill in zeros for y padding width if not given
         padding_width["Y"] = padding_width.get("Y", (0, 0))
 
         # # restrict data here, so its easier to see the output
@@ -654,7 +654,7 @@ class TestPaddingFaceConnection:
             xl=slice(
                 -padding_width["X"][0],
                 None if padding_width["X"][0] > 0 else 0,
-                # this is a bit annoying. if the boundary width on this side is
+                # this is a bit annoying. if the padding width on this side is
                 # 0 I want nothing to be padded. but slice(0,None) pads the whole array...
             )
         )
@@ -663,7 +663,7 @@ class TestPaddingFaceConnection:
             x=slice(
                 -padding_width["X"][0],
                 None if padding_width["X"][0] > 0 else 0,
-                # this is a bit annoying. if the boundary width on this side is
+                # this is a bit annoying. if the padding width on this side is
                 # 0 I want nothing to be padded. but slice(0,None) pads the whole array...
             )
         )
@@ -725,7 +725,7 @@ class TestPaddingFaceConnection:
         u = ds_faces.u
         v = ds_faces.v
 
-        # fill in zeros for y boundary width if not given
+        # fill in zeros for y padding width if not given
         padding_width["Y"] = padding_width.get("Y", (0, 0))
 
         # # restrict data here, so its easier to see the output
@@ -834,7 +834,7 @@ class TestPaddingFaceConnection:
         u = ds_faces.u
         v = ds_faces.v
 
-        # fill in zeros for y boundary width if not given
+        # fill in zeros for y padding width if not given
         padding_width["Y"] = padding_width.get("Y", (0, 0))
 
         # # restrict data here, so its easier to see the output
@@ -867,7 +867,7 @@ class TestPaddingFaceConnection:
             x=slice(
                 -padding_width["Y"][0],
                 None if padding_width["Y"][0] > 0 else 0,
-                # this is a bit annoying. if the boundary width on this side is
+                # this is a bit annoying. if the padding width on this side is
                 # 0 I want nothing to be padded. but slice(0,None) pads the whole array...
             )
         ).rename({"x": "xl", "yl": "y"})
@@ -886,7 +886,7 @@ class TestPaddingFaceConnection:
             xl=slice(
                 -padding_width["Y"][0],
                 None if padding_width["Y"][0] > 0 else 0,
-                # this is a bit annoying. if the boundary width on this side is
+                # this is a bit annoying. if the padding width on this side is
                 # 0 I want nothing to be padded. but slice(0,None) pads the whole array...
             )
         ).rename({"xl": "x", "y": "yl"})
@@ -1049,7 +1049,7 @@ class TestPaddingFaceConnection:
         u = ds_faces.u
         v = ds_faces.v
 
-        # fill in zeros for y boundary width if not given
+        # fill in zeros for y padding width if not given
         padding_width["Y"] = padding_width.get("Y", (0, 0))
 
         # # restrict data here, so its easier to see the output
@@ -1075,7 +1075,7 @@ class TestPaddingFaceConnection:
             yl=slice(
                 -padding_width["X"][1],
                 None if padding_width["X"][1] > 0 else 0,
-                # this is a bit annoying. if the boundary width on this side is
+                # this is a bit annoying. if the padding width on this side is
                 # 0 I want nothing to be padded. but slice(0,None) pads the whole array...
             )
         ).rename({"x": "xl", "yl": "y"})
@@ -1086,7 +1086,7 @@ class TestPaddingFaceConnection:
             x=slice(
                 -padding_width["Y"][1],
                 None if padding_width["Y"][1] > 0 else 0,
-                # this is a bit annoying. if the boundary width on this side is
+                # this is a bit annoying. if the padding width on this side is
                 # 0 I want nothing to be padded. but slice(0,None) pads the whole array...
             )
         ).rename({"x": "xl", "yl": "y"})
@@ -1098,7 +1098,7 @@ class TestPaddingFaceConnection:
             y=slice(
                 -padding_width["X"][1],
                 None if padding_width["X"][1] > 0 else 0,
-                # this is a bit annoying. if the boundary width on this side is
+                # this is a bit annoying. if the padding width on this side is
                 # 0 I want nothing to be padded. but slice(0,None) pads the whole array...
             )
         ).rename({"xl": "x", "y": "yl"})
@@ -1110,7 +1110,7 @@ class TestPaddingFaceConnection:
             xl=slice(
                 -padding_width["Y"][1],
                 None if padding_width["Y"][1] > 0 else 0,
-                # this is a bit annoying. if the boundary width on this side is
+                # this is a bit annoying. if the padding width on this side is
                 # 0 I want nothing to be padded. but slice(0,None) pads the whole array...
             )
         ).rename({"xl": "x", "y": "yl"})
@@ -1181,7 +1181,7 @@ class TestPaddingFaceConnection:
         u = ds_faces.u
         v = ds_faces.v
 
-        # fill in zeros for y boundary width if not given
+        # fill in zeros for y padding width if not given
         padding_width["Y"] = padding_width.get("Y", (0, 0))
 
         padded_complex = pad(

@@ -149,11 +149,11 @@ def _pad_face_connections(
 
     padding_width = {axname: padding_width.get(axname, (0, 0)) for axname in pad_axes}
 
-    # This method below works really nicely if all the boundary widths have the same size.
-    # This is however not very common. We often have boundary_width with (0,1).
+    # This method below works really nicely if all the padding widths have the same size.
+    # This is however not very common. We often have padding_width with (0,1).
     # I had a ton of trouble accomodating with convoluted logic. The new approach:
-    # we find the largest boundary width value, and pad every boundary/axis with this max
-    # value. As a final step we trim the padded dataset according to the original boundary
+    # we find the largest padding width value, and pad every boundary/axis with this max
+    # value. As a final step we trim the padded dataset according to the original padding
     # widths.
 
     def _max_boundary_width(padding_width):
@@ -475,10 +475,10 @@ def pad(
     grid : xgcm.Grid
         Grid object specifiying the topology and default boundary conditions to use for padding.
     padding_width :
-        The widths of the boundaries at the edge of each array.
+        The number of values used to pad the two sides of each array.
         Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
     padding : {None, 'fill', 'extend', 'periodic', dict}, optional
-        A flag indicating how to handle padding:
+        A flag indicating how to handle padding at exterior grid boundaries:
 
         * None:  Do not apply any boundary conditions. Raise an error if
             boundary conditions are required for the operation.
@@ -524,7 +524,7 @@ def pad(
     if padding_width is None or all(
         width == (0, 0) for width in padding_width.values()
     ):
-        # TODO: Think about case when boundary is specified but boundary_width is None or (0,0).
+        # TODO: Think about case when padding is specified but padding_width is None or (0,0).
         # TODO: No padding would occur in that situation. Should we warn the user?
         return data
 

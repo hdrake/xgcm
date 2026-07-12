@@ -55,7 +55,7 @@ class Axis:
             Default mapping from and to grid positions
             (e.g. `{'center': 'left'}`). Will be inferred if not specified.
         padding : {None, 'fill', 'extend', 'periodic'}, optional
-            A flag indicating how to handle padding:
+            A flag indicating how to handle padding at exterior grid boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.

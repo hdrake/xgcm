@@ -50,7 +50,6 @@ def diff_center_to_outer(a):
 
 
 # TODO this actually makes the array end up smaller, but padding_width={"X": (-1, -1)} is not the correct kwarg value.
-# TODO rename `padding_width` argument to `pad_width` to better reflect this possibility?
 @as_grid_ufunc(signature="(X:outer)->(X:center)", padding_width={"X": (0, 0)})
 def diff_outer_to_center(a):
     return diff_forward(a)

@@ -385,10 +385,10 @@ class GridUFunc:
 
         ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
     padding_width : Dict[str: Tuple[int, int], optional
-        The widths of the boundaries at the edge of each array.
+        The number of values used to pad the two sides of each array.
         Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
     padding : {None, 'fill', 'extend', 'periodic', dict}, optional
-        A flag indicating how to handle boundaries:
+        A flag indicating how to handle padding at exterior grid boundaries:
 
         * None:  Do not apply any boundary conditions. Raise an error if
             boundary conditions are required for the operation.
@@ -581,10 +581,10 @@ def as_grid_ufunc(
 
         ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)``.
     padding_width : Dict[str: Tuple[int, int], optional
-        The widths of the boundaries at the edge of each array.
+        The number of values used to pad the two sides of each array.
         Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
     padding : {None, 'fill', 'extend', 'periodic', dict}, optional
-        A flag indicating how to handle boundaries:
+        A flag indicating how to handle padding at exterior grid boundaries:
 
         * None:  Do not apply any boundary conditions. Raise an error if
             boundary conditions are required for the operation.
@@ -710,11 +710,11 @@ def apply_as_grid_ufunc(
         require only that there is exactly one xgcm.Axis name in `axis` which exists in Grid and starts on position
         `center`.
     padding_width : Dict[str: Tuple[int, int]
-        The widths of the boundaries at the edge of each array.
+        The number of values used to pad the two sides of each array.
         Supplied in a mapping of the form {dummy_axis_name: (lower_width, upper_width)}.
         The axis names here are again dummy variables, each of which must be present in the signature.
     padding : {None, 'fill', 'extend', 'periodic', dict}, optional
-        A flag indicating how to handle boundaries:
+        A flag indicating how to handle padding at exterior grid boundaries:
 
         * None:  Do not apply any boundary conditions. Raise an error if
             boundary conditions are required for the operation.
