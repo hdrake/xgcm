@@ -332,9 +332,7 @@ def test_vector_flips_scalar_does_not():
     # same array, once as scalar, once as a vector component
     scal = pad(ds.v, grid, padding_width={"Y": (0, 1)}).isel(yl=-1).values
     vec = (
-        pad(
-            {"Y": ds.v}, grid, padding_width={"Y": (0, 1)}, other_component={"X": ds.u}
-        )
+        pad({"Y": ds.v}, grid, padding_width={"Y": (0, 1)}, other_component={"X": ds.u})
         .isel(yl=-1)
         .values
     )
