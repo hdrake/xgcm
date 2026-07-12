@@ -1,5 +1,18 @@
 # What's New
 
+## v1.0.0 (unreleased) {#whats-new-1-0-0}
+
+
+### New Features
+
+### Breaking Changes
+
+### Internal Changes
+
+### Documentation
+
+### Bugfixes
+
 ## v0.10.0 (2026/07/12) {#whats-new-0-10-0}
 
 
