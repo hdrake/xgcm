@@ -1,26 +1,16 @@
 # What's New
 
-## v0.10.0 (unreleased) {#whats-new-0-10-0}
+## v0.10.0 (2026/07/12) {#whats-new-0-10-0}
 
 
 ### New Features
 
-### Bug Fixes
-
-- `Grid.get_metric` (and the operations built on it, e.g. `Grid.integrate` and
-  `Grid.average`) no longer emits spurious "Metric ... being interpolated ..."
-  `UserWarning`s when an exact-position metric combination exists but is not the
-  first candidate tried. The search now looks for an exact-position match across
-  all candidate combinations before falling back to interpolation, and warns at
-  most once. The returned metric is unchanged
-  ([#758](https://github.com/xgcm/xgcm/pull/758)).
+- Add a `reverse` option to `Grid.cumsum` and `Grid.cumint` to accumulate from the end of
+  an axis toward the start instead of from the start. `reverse` accepts a bool (applied to
+  every axis being accumulated) or a per-axis `dict`; passing it for an axis that is not
+  being cumulatively summed raises an informative `ValueError`
+  ([#729](https://github.com/xgcm/xgcm/pull/729)).
   By [Henri Drake](https://github.com/hdrake).
-
-- `Axis` now raises a `ValueError` immediately if the same dimension name is
-  assigned to more than one position (e.g. `{'center': 'x', 'outer': 'x'}`),
-  rather than silently accepting the invalid configuration
-  ([#634](https://github.com/xgcm/xgcm/issues/634)).
-  By [Mike German](https://github.com/steps-re).
 
 ### Breaking Changes
 
@@ -28,23 +18,25 @@
   throughout the public API, to better reflect the process of array padding and avoid confusion with
   physical boundary conditions (e.g. an ocean-land boundary). The old names now raise an informative
   error rather than going through a deprecation cycle
-  ([#678](https://github.com/xgcm/xgcm/issues/678), [#696](https://github.com/xgcm/xgcm/pull/696)).
+  ([#678](https://github.com/xgcm/xgcm/issues/678), [#696](https://github.com/xgcm/xgcm/pull/696),
+  [#761](https://github.com/xgcm/xgcm/pull/761)).
   By [Nick Hodgskin](https://github.com/VeckoTheGecko).
 
 - Removed the `periodic` argument of `xgcm.Grid`. Boundary behavior is now
-  controlled exclusively by the `boundary` argument. Migrate as follows:
-  `periodic=True` → `boundary="periodic"`; `periodic=False` → `boundary="fill"`
+  controlled exclusively by the `padding` argument (see the `boundary` → `padding`
+  rename above). Migrate as follows:
+  `periodic=True` → `padding="periodic"`; `periodic=False` → `padding="fill"`
   (the previous implicit mapping); and the per-axis list form
   `periodic=["X"]` → a per-axis dict, e.g.
-  `boundary={"X": "periodic", "Y": "fill"}`. Passing `periodic=` now raises an
+  `padding={"X": "periodic", "Y": "fill"}`. Passing `periodic=` now raises an
   informative `ValueError` naming the replacement.
 
   The default boundary semantics have also changed: previously a `Grid`
-  constructed without any boundary specification defaulted to *periodic* along
+  constructed without any padding specification defaulted to *periodic* along
   every axis (silently wrapping), which was the root of several boundary-condition
-  bugs. Now, an axis with no boundary specified applies *no* boundary condition:
+  bugs. Now, an axis with no padding specified applies *no* boundary condition:
   operations that require padding along such an axis raise an informative error
-  instead of silently wrapping. Pass `boundary="periodic"` to recover the old
+  instead of silently wrapping. Pass `padding="periodic"` to recover the old
   wrap-around behavior. This makes the default explicitly non-periodic and fixes
   cases where a declared non-periodic axis could still wrap.
   ([#746](https://github.com/xgcm/xgcm/pull/746);
@@ -106,7 +98,31 @@
   ([#679](https://github.com/xgcm/xgcm/issues/679), [#680](https://github.com/xgcm/xgcm/pull/680), [#742](https://github.com/xgcm/xgcm/pull/742)).
   By [Nick Hodgskin](https://github.com/VeckoTheGecko) and [Henri Drake](https://github.com/hdrake).
 
+- Refresh the `grid_metrics.ipynb` and `transform.ipynb` documentation notebooks and fetch the
+  `grid_metrics` example data from Zenodo (the previous THREDDS source is no longer available)
+  ([#756](https://github.com/xgcm/xgcm/pull/756)).
+  By [Henri Drake](https://github.com/hdrake).
+
+- Document why `Grid.get_metric` prefers interpolating an exact-axes metric over composing one
+  from sub-axis metrics ([#760](https://github.com/xgcm/xgcm/pull/760)).
+  By [Henri Drake](https://github.com/hdrake).
+
 ### Bugfixes
+
+- `Grid.get_metric` (and the operations built on it, e.g. `Grid.integrate` and
+  `Grid.average`) no longer emits spurious "Metric ... being interpolated ..."
+  `UserWarning`s when an exact-position metric combination exists but is not the
+  first candidate tried. The search now looks for an exact-position match across
+  all candidate combinations before falling back to interpolation, and warns at
+  most once. The returned metric is unchanged
+  ([#758](https://github.com/xgcm/xgcm/pull/758)).
+  By [Henri Drake](https://github.com/hdrake).
+
+- `Axis` now raises a `ValueError` immediately if the same dimension name is
+  assigned to more than one position (e.g. `{'center': 'x', 'outer': 'x'}`),
+  rather than silently accepting the invalid configuration
+  ([#634](https://github.com/xgcm/xgcm/issues/634), [#752](https://github.com/xgcm/xgcm/pull/752)).
+  By [Mike German](https://github.com/steps-re).
 
 - Respect the `fill_value` bound on the `@as_grid_ufunc` decorator (or passed to `GridUFunc`). It was
   silently dropped in `GridUFunc.__call__` — only a call-time `fill_value` took effect, so a bound value
@@ -123,7 +139,7 @@
   heat flux was `-1.6e9` (bare) versus `0` (dict). The bare form now recovers the component's axis
   from its own staggering and runs the same rotation/sign-flip logic as the dict form, giving
   identical output, and raises a clear error when the axis cannot be inferred (e.g. a cell-centre
-  field) ([#748](https://github.com/xgcm/xgcm/issues/748)).
+  field) ([#748](https://github.com/xgcm/xgcm/issues/748), [#749](https://github.com/xgcm/xgcm/pull/749)).
   By [Henri Drake](https://github.com/hdrake).
 
 - Fix `Grid.transform(..., method="conservative")` falsely raising `NotImplementedError`
@@ -155,6 +171,15 @@
   non-face-connection path, mirroring the existing face-connection path
   ([#581](https://github.com/xgcm/xgcm/issues/581)).
   By [Henri Drake](https://github.com/hdrake).
+
+- Fix vector-component `Grid.diff`/`Grid.interp` (and `diff_2d_vector`/`interp_2d_vector`) crashing with
+  `AttributeError: 'dict' object has no attribute 'variable'` on grids with face connections when a
+  vector component was supplied as a `{axis_name: DataArray}` dict *and* backed by dask. The chunked
+  `map_overlap` path still assumed the component was a bare `DataArray` when setting up the dask overlap
+  and when reading padded chunk sizes; it now unwraps the inner `DataArray` first, so chunked vector
+  diff/interp follows the correct face-connection logic
+  ([#704](https://github.com/xgcm/xgcm/issues/704), [#705](https://github.com/xgcm/xgcm/pull/705)).
+  By [Anthony Meza](https://github.com/anthony-meza).
 
 - Fix `diff_2d_vector`/`interp_2d_vector` (and the equivalent vector-component `Grid.diff`/`Grid.interp`)
   on grids with face connections when a vector component is a dask array chunked into more than one chunk
