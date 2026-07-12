@@ -149,11 +149,11 @@ def _pad_face_connections(
 
     padding_width = {axname: padding_width.get(axname, (0, 0)) for axname in pad_axes}
 
-    # This method below works really nicely if all the boundary widths have the same size.
-    # This is however not very common. We often have boundary_width with (0,1).
+    # This method below works really nicely if all the padding widths have the same size.
+    # This is however not very common. We often have padding_width with (0,1).
     # I had a ton of trouble accomodating with convoluted logic. The new approach:
-    # we find the largest boundary width value, and pad every boundary/axis with this max
-    # value. As a final step we trim the padded dataset according to the original boundary
+    # we find the largest padding width value, and pad every boundary/axis with this max
+    # value. As a final step we trim the padded dataset according to the original padding
     # widths.
 
     def _max_boundary_width(padding_width):
@@ -202,8 +202,8 @@ def _pad_face_connections(
                     f"but the requested operation needs to pad the {side_name} "
                     f"edge of face(s) {unconnected_faces}, which have no face "
                     f"connection there. Set a boundary condition, e.g. "
-                    f"``boundary='fill'`` (or 'extend'/'periodic'), on the Grid "
-                    f"(``Grid(..., boundary=...)``) or pass ``boundary=`` to the "
+                    f"``padding='fill'`` (or 'extend'/'periodic'), on the Grid "
+                    f"(``Grid(..., padding=...)``) or pass ``padding=`` to the "
                     f"grid method."
                 )
         # Every padded edge of this axis is connected, so the pre-padded halos
@@ -441,8 +441,8 @@ def _pad_basic(
             raise ValueError(
                 f"No boundary condition was specified for axis {ax!r}, but the "
                 f"requested operation needs to pad it. Set a boundary condition, "
-                f"e.g. ``boundary='fill'`` (or 'extend'/'periodic'), on the Grid "
-                f"(``Grid(..., boundary=...)``) or pass ``boundary=`` to the "
+                f"e.g. ``padding='fill'`` (or 'extend'/'periodic'), on the Grid "
+                f"(``Grid(..., padding=...)``) or pass ``padding=`` to the "
                 f"grid method."
             )
         # translate padding and kwargs to xarray.pad syntax
@@ -458,26 +458,27 @@ def _pad_basic(
 def pad(
     data: Union[xr.DataArray, Dict[str, xr.DataArray]],
     grid: Grid,
-    boundary_width: Optional[Dict[str, Tuple[int, int]]],
-    boundary: Optional[Union[str, Mapping[str, str]]] = None,
+    padding_width: Optional[Dict[str, Tuple[int, int]]],
+    padding: Optional[Union[str, Mapping[str, str]]] = None,
     fill_value: Optional[Union[float, Mapping[str, float]]] = None,
     other_component: Optional[Dict[str, xr.DataArray]] = None,
+    **kwargs,
 ):
     """
-    Pads the boundary of given arrays along given Axes, according to information in Axes.boundary.
+    Pads the boundary of given arrays along given Axes, according to information in Axes.padding.
     Parameters
     ----------
     data :
-        Array to pad according to boundary and boundary_width.
+        Array to pad according to padding and padding_width.
         If a dictionary is passed the input is assumed to be a vector component
         (with the directionof that component identified by the dict key, matching one of the grid axes)
     grid : xgcm.Grid
         Grid object specifiying the topology and default boundary conditions to use for padding.
-    boundary_width :
-        The widths of the boundaries at the edge of each array.
+    padding_width :
+        The number of values used to pad the two sides of each array.
         Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
-    boundary : {None, 'fill', 'extend', 'periodic', dict}, optional
-        A flag indicating how to handle boundaries:
+    padding : {None, 'fill', 'extend', 'periodic', dict}, optional
+        A flag indicating how to handle padding at exterior grid boundaries:
 
         * None:  Do not apply any boundary conditions. Raise an error if
             boundary conditions are required for the operation.
@@ -490,7 +491,7 @@ def pad(
         Optionally a dict mapping axis name to seperate values for each axis
         can be passed.
     fill_value :
-        The value to use in boundary conditions with `boundary='fill'`.
+        The value to use in boundary conditions with `padding='fill'`.
         Optionally a dict mapping axis name to separate values for each axis
         can be passed. Default is 0.
     other_component :
@@ -499,12 +500,22 @@ def pad(
         dict key, matching one of the grid axes)
     """
 
-    # TODO rename this globally
-    padding = boundary
-    padding_width = boundary_width
+    # TODO - remove deprecation handling
+    if "boundary" in kwargs:
+        raise ValueError(
+            "Argument 'boundary' has been renamed to 'padding'. "
+            "Please use 'padding' instead."
+        )
+
+    # TODO - remove deprecation handling
+    if "boundary_width" in kwargs:
+        raise ValueError(
+            "Argument 'boundary_width' has been renamed to 'padding_width'. "
+            "Please use 'padding_width' instead."
+        )
 
     # Always promote the padding/fill_value to a dict of form {ax: kwarg}.
-    padding = grid._complete_user_kwargs_using_axis_defaults(padding, "boundary")
+    padding = grid._complete_user_kwargs_using_axis_defaults(padding, "padding")
     fill_value = grid._complete_user_kwargs_using_axis_defaults(
         fill_value, "fill_value"
     )
@@ -513,7 +524,7 @@ def pad(
     if padding_width is None or all(
         width == (0, 0) for width in padding_width.values()
     ):
-        # TODO: Think about case when boundary is specified but boundary_width is None or (0,0).
+        # TODO: Think about case when padding is specified but padding_width is None or (0,0).
         # TODO: No padding would occur in that situation. Should we warn the user?
         return data
 

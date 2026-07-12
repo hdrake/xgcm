@@ -130,10 +130,10 @@ datasets = {
 }
 
 # include the boundary condition each dataset is meant to be used with.
-# The pre-1.0 `periodic` flag translated to a `boundary` as follows:
-#   periodic=True  -> boundary='periodic'
-#   periodic=False -> boundary='fill'
-#   periodic=['X'] -> boundary={'X': 'periodic', 'Y': 'fill'} (others non-periodic)
+# The pre-1.0 `periodic` flag translated to a `padding` as follows:
+#   periodic=True  -> padding='periodic'
+#   periodic=False -> padding='fill'
+#   periodic=['X'] -> padding={'X': 'periodic', 'Y': 'fill'} (others non-periodic)
 datasets_with_boundary = {
     "nonperiodic_1d_outer": (datasets["1d_outer"], "fill"),
     "nonperiodic_1d_inner": (datasets["1d_inner"], "fill"),

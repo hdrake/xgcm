@@ -24,6 +24,13 @@
 
 ### Breaking Changes
 
+- The `boundary` argument (and `boundary_width`) has been renamed to `padding` (and `padding_width`)
+  throughout the public API, to better reflect the process of array padding and avoid confusion with
+  physical boundary conditions (e.g. an ocean-land boundary). The old names now raise an informative
+  error rather than going through a deprecation cycle
+  ([#678](https://github.com/xgcm/xgcm/issues/678), [#696](https://github.com/xgcm/xgcm/pull/696)).
+  By [Nick Hodgskin](https://github.com/VeckoTheGecko).
+
 - Removed the `periodic` argument of `xgcm.Grid`. Boundary behavior is now
   controlled exclusively by the `boundary` argument. Migrate as follows:
   `periodic=True` → `boundary="periodic"`; `periodic=False` → `boundary="fill"`

@@ -1181,7 +1181,7 @@ def test_transform_error_periodic(multidim_cases):
 
     # `transform` is not supported on periodic axes, so build a periodic grid and
     # confirm the operation raises.
-    grid = Grid(source, boundary="periodic", **grid_kwargs)
+    grid = Grid(source, padding="periodic", **grid_kwargs)
 
     with pytest.raises(ValueError):
         _ = grid.transform(source.data, axis, target, **transform_kwargs)

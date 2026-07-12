@@ -52,7 +52,7 @@ grid = Grid(
         "X": {"center": "x_c", "left": "x_g"},
         "Y": {"center": "y_c", "left": "y_g"},
     },
-    boundary="periodic",
+    padding="periodic",
     autoparse_metadata=False,
 )
 grid
@@ -126,7 +126,7 @@ our grid ufunc can be defined like this
 ```python
 @as_grid_ufunc(
     "(X:left,Y:center),(X:center,Y:left)->(X:center,Y:center)",
-    boundary_width={"X": (0, 1), "Y": (0, 1)},
+    padding_width={"X": (0, 1), "Y": (0, 1)},
 )
 def divergence(u, v):
     u_diff_x = diff(u, axis=-2)
@@ -198,7 +198,7 @@ ds["grad_T_x"], ds["grad_T_y"] = grid.apply_as_grid_ufunc(
     ds["T"],
     axis=[("X", "Y")],
     signature="(X:center,Y:center)->(X:left,Y:center),(X:center,Y:left)",
-    boundary_width={"X": (1, 0), "Y": (1, 0)},
+    padding_width={"X": (1, 0), "Y": (1, 0)},
 )
 ```
 
@@ -244,7 +244,7 @@ def interp_forward(arr, axis):
 ```python
 @as_grid_ufunc(
     "(X:left,Y:center),(X:center,Y:left),(X:center,Y:center)->(X:left,Y:center),(X:center,Y:left)",
-    boundary_width={"X": (1, 0), "Y": (1, 0)},
+    padding_width={"X": (1, 0), "Y": (1, 0)},
 )
 def flux(u, v, T):
     """First order flux"""
@@ -291,7 +291,7 @@ We can compute vector fields from vector fields too, such as vorticity.
 ```python
 @as_grid_ufunc(
     "(X:left,Y:center),(X:center,Y:left)->(X:left,Y:left)",
-    boundary_width={"X": (1, 0), "Y": (1, 0)},
+    padding_width={"X": (1, 0), "Y": (1, 0)},
 )
 def vorticity(u, v):
     v_diff_x = diff(v, axis=-2)

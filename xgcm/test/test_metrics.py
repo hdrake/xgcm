@@ -31,7 +31,7 @@ def test_multiple_metrics_per_axis():
         ds,
         coords={"X": {"center": "XC", "left": "XG"}},
         metrics={("X",): ["dXC", "dXG"]},
-        boundary="periodic",
+        padding="periodic",
         autoparse_metadata=False,
     )
 
@@ -190,7 +190,7 @@ def test_get_metric_with_conditions_02a():
     grid = Grid(
         ds,
         coords=coords,
-        boundary="extend",
+        padding="extend",
         autoparse_metadata=False,
     )
     grid.set_metrics(("X", "Y"), "area_e")
@@ -206,7 +206,7 @@ def test_get_metric_with_conditions_02b():
     # Condition 2, case b: get_metric should select for the metric with matching axes and interpolate from there,
     # even if other metrics in the desired positions are available
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, boundary="periodic", autoparse_metadata=False)
+    grid = Grid(ds, coords=coords, padding="periodic", autoparse_metadata=False)
     grid.set_metrics(("X", "Y"), "area_e")
     grid.set_metrics(("X"), "dx_n")
     grid.set_metrics(("Y"), "dx_n")
@@ -254,7 +254,7 @@ def test_get_metric_with_conditions_03b():
 def test_get_metric_with_conditions_04a():
     # Condition 4, case a: 1 metric on the wrong position (must interpolate before multiplying)
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, boundary="periodic", autoparse_metadata=False)
+    grid = Grid(ds, coords=coords, padding="periodic", autoparse_metadata=False)
     grid.set_metrics(("X"), "dx_t")
     grid.set_metrics(("Y"), "dy_n")
 
@@ -271,7 +271,7 @@ def test_get_metric_with_conditions_04a():
 def test_get_metric_with_conditions_04b():
     # Condition 4, case b: 2 metrics in the wrong position (must interpolate both before multiplying)
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, boundary="periodic", autoparse_metadata=False)
+    grid = Grid(ds, coords=coords, padding="periodic", autoparse_metadata=False)
     grid.set_metrics(("X"), "dx_t")
     grid.set_metrics(("Y"), "dy_t")
 
