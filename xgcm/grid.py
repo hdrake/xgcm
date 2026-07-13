@@ -33,7 +33,7 @@ from .grid_ufunc import (
     apply_as_grid_ufunc,
 )
 from .metrics import iterate_axis_combinations
-from .padding import pad
+from .padding import _is_fold_padding, pad
 
 from typing import Literal
 
@@ -114,6 +114,10 @@ class Grid:
               value. (i.e. a limited form of Neumann boundary condition.)
             * 'periodic': Set values by wrapping around the array on the specified
                 axes. (i.e. a periodic boundary condition.)
+            * a fold spec (``dict``): a north-fold padding for a tripolar grid,
+              e.g. ``{'fold': 'corner'}``. Declared on the meridional (fold) axis;
+              the zonal seam axis must be explicitly ``'periodic'``. See
+              ``padding.py`` for the pivot/south conventions.
             Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
         face_connections : dict
@@ -234,6 +238,16 @@ class Grid:
         # TODO: In the future we want this the only place where we store these.
         # TODO: This info needs to then be accessible to e.g. pad()
 
+        # Capture the axes the user *explicitly* marked periodic (via
+        # ``padding='periodic'``), before Axis construction. `_validate_folds`
+        # uses this to infer a north-fold seam axis: only an explicitly-periodic
+        # axis is a seam candidate. With `periodic` removed in v1.0.0, an axis is
+        # a seam candidate only if its `padding` was set to "periodic"; declare
+        # the seam via `padding={seam: "periodic", fold_axis: {"fold": ...}}`.
+        self._explicitly_periodic_axes = {
+            ax for ax, p in padding_dict.items() if p == "periodic"
+        }
+
         default_shifts_dict = self._map_kwargs_over_axes(default_shifts, axes=all_axes)
 
         fill_value_dict = self._map_kwargs_over_axes(fill_value, axes=all_axes)
@@ -263,6 +277,10 @@ class Grid:
 
         if face_connections is not None:
             self._assign_face_connections(face_connections)
+
+        # Resolve & validate any north-fold boundaries (a cross-axis property:
+        # the seam axis is inferred here, where all axes are visible).
+        self._validate_folds()
 
         self._metrics = {}
 
@@ -389,6 +407,67 @@ class Grid:
         for axis, axis_links in axis_connections.items():
             self.axes[axis]._facedim = facedim
             self.axes[axis]._face_connections = axis_links
+
+    def _validate_folds(self):
+        """Resolve north-fold paddings and infer their seam axis.
+
+        A fold padding (e.g. ``padding={"Y": {"fold": "corner"}}``) is declared
+        on the fold axis -- the meridional ("Y") axis -- but the seam axis it
+        mirrors along -- the zonal ("X") axis -- is a cross-axis property. Infer
+        it here as the *explicitly* periodic axis orthogonal to the fold axis (an
+        axis whose ``padding`` was set to ``"periodic"``), and record everything
+        in ``self._folds`` keyed by fold-axis name.
+        """
+        self._folds: Dict[str, Dict[str, Any]] = {}
+        for axname, axis in self.axes.items():
+            padding = axis._padding
+            if not _is_fold_padding(padding):
+                continue
+            seam_candidates = [
+                other
+                for other in self.axes
+                if other != axname and other in self._explicitly_periodic_axes
+            ]
+            if len(seam_candidates) == 0:
+                raise ValueError(
+                    f"A fold padding on axis {axname!r} requires an explicitly "
+                    "periodic seam axis (the zonal wrap), but no other axis was "
+                    "explicitly marked periodic. Set e.g. "
+                    "padding={'X': 'periodic', '" + str(axname) + "': {'fold': ...}}."
+                )
+            if len(seam_candidates) > 1:
+                raise ValueError(
+                    f"A fold padding on axis {axname!r} is ambiguous: more than one "
+                    f"explicitly periodic axis could be the seam ({seam_candidates}). "
+                    "Multiple candidate seam axes are not supported."
+                )
+            self._folds[axname] = {
+                "seam_axis": seam_candidates[0],
+                "pivot": padding["fold"],
+                "south": padding["south"],
+            }
+
+        if self._folds and self._face_connections is not None:
+            raise NotImplementedError(
+                "Combining a north-fold boundary with face_connections is not "
+                f"supported (fold axes: {sorted(self._folds)}). Use one or the "
+                "other."
+            )
+
+        # NOTE: The north-fold (tripolar) boundary is still experimental. Warn
+        # once at construction so users know its API and numerical behavior may
+        # change and that it has not yet been validated across every grid
+        # configuration. See the "experimental" admonition in
+        # docs/grid_topology.md.
+        if self._folds:
+            warnings.warn(
+                "The north-fold (tripolar) boundary condition is experimental. "
+                "Its API and numerical behavior may change in future releases, "
+                "and it has not yet been validated across the full range of grid "
+                "configurations. Please review results carefully and report any "
+                "issues at https://github.com/xgcm/xgcm/issues.",
+                category=UserWarning,
+            )
 
     def set_metrics(self, key, value, overwrite=False):
         metric_axes = frozenset(_maybe_promote_str_to_list(key))
