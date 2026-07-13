@@ -14,7 +14,7 @@
   `cumint` from is a separate concern, handled by the `reverse` keyword in
   [#729](https://github.com/xgcm/xgcm/pull/729).) Defaults to `'increasing'`, so existing
   behavior is unchanged ([#337](https://github.com/xgcm/xgcm/issues/337),
-  [#665](https://github.com/xgcm/xgcm/pull/665)).
+  [#665](https://github.com/xgcm/xgcm/issues/665)).
   By [Henri Drake](https://github.com/hdrake).
 
 ### Breaking Changes
