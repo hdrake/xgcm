@@ -174,7 +174,7 @@ grid
 ```
 
 For a real-world example of how to use face connections, check out the
-[MITgcm ECCOv4 example](xgcm-examples/01_eccov4.ipynb).
+[MITgcm ECCOv4 example](xgcm-examples/04_eccov4.ipynb).
 
 ## Face Connections Spec {#face-connections-spec}
 
