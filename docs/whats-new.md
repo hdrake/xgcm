@@ -5,6 +5,19 @@
 
 ### New Features
 
+### Breaking Changes
+
+### Internal Changes
+
+### Documentation
+
+### Bugfixes
+
+## v0.10.1 (2026/07/20) {#whats-new-0-10-1}
+
+
+### New Features
+
 - Add an **experimental** bipolar north-fold boundary condition for tripolar ocean grids
   (MOM6, NEMO, MOM5,
   Oceananigans), requested as a per-axis `padding` value on the fold axis, e.g.

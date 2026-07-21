@@ -223,7 +223,7 @@ left to left, or right to right.
     `UserWarning` to this effect. Please check results carefully and report any
     issues on the [issue tracker](https://github.com/xgcm/xgcm/issues).
 
-Many global ocean models (MOM6/OM4, NEMO/ORCA, MOM5, Oceananigans) avoid the
+Many global ocean models (e.g. MOM6/OM4, NEMO/ORCA, MOM5, Oceananigans) avoid the
 coordinate singularity at the geographic North Pole by displacing it onto land
 and pairing it with a second displaced pole. Such grids are called **tripolar**:
 they carry three singularities — the ordinary South Pole plus the two Arctic
