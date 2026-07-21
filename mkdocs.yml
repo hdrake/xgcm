@@ -30,6 +30,7 @@ plugins:
   mkdocs-jupyter:
     include_source: true
     execute: false
+    include: ["*.ipynb"]   # don't render helper scripts (scripts/*.py) as pages
     # grid_metrics.ipynb is executed and rendered by the `execute` plugin above;
     # mkdocs-jupyter must skip it to avoid double-wrapping the same .ipynb file.
     ignore:
@@ -80,10 +81,11 @@ nav:
   - Boundary Conditions: boundary_conditions.md
   - Transform: transform.ipynb
   - Examples:
-      - MITgcm: xgcm-examples/02_mitgcm.ipynb
-      - MITgcm ECCOv4: xgcm-examples/01_eccov4.ipynb
+      - MITgcm: xgcm-examples/01_mitgcm.ipynb
+      - NEMO: xgcm-examples/02_nemo_idealized.ipynb
       - MOM6: xgcm-examples/03_MOM6.ipynb
-      - NEMO: xgcm-examples/04_nemo_idealized.ipynb
+      - MITgcm ECCOv4: xgcm-examples/04_eccov4.ipynb
+      - Tripolar north fold: xgcm-examples/05_tripolar_fold.ipynb
   - "What's New": whats-new.md
   - Contributor Guide: contributor_guide.md
   - API: api.md

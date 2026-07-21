@@ -1,8 +1,11 @@
-from typing import Mapping, Optional, Tuple
+from typing import Mapping, Optional, Tuple, Union
 
 import xarray as xr
 
-from .padding import _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG
+from .padding import (
+    _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG,
+    _parse_fold_padding,
+)
 
 VALID_POSITION_NAMES = "center|left|right|inner|outer"
 FALLBACK_SHIFTS = {
@@ -20,7 +23,7 @@ class Axis:
         str, str
     ]  # TODO give this mapping from positions to dimension names a better name?
     _default_shifts: Mapping[str, str]
-    _padding: Optional[str]
+    _padding: Optional[Union[str, Mapping]]
     _fill_value: float
 
     """A single direction along a model grid, containing potentially multiple cell positions."""
@@ -34,7 +37,7 @@ class Axis:
             Mapping[str, str]
         ] = None,  # TODO type hint as Literal of the allowed options
         padding: Optional[
-            str
+            Union[str, Mapping]
         ] = None,  # TODO type hint as Literal of the allowed options
         fill_value: Optional[float] = None,
         **kwargs,
@@ -54,7 +57,7 @@ class Axis:
         default_shifts : dict, optional
             Default mapping from and to grid positions
             (e.g. `{'center': 'left'}`). Will be inferred if not specified.
-        padding : {None, 'fill', 'extend', 'periodic'}, optional
+        padding : str, dict, or None, optional
             A flag indicating how to handle padding at exterior grid boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
@@ -65,6 +68,12 @@ class Axis:
               value. (i.e. a limited form of Neumann boundary condition.)
             * 'periodic': Set values by wrapping around the array on the specified
                 axes. (i.e. a periodic boundary condition.)
+            * a fold spec (``dict``): a north-fold boundary for a tripolar grid,
+              e.g. ``{'fold': 'corner'}``. The value names the pivot the pole
+              sits on (``'center'``/``'T'``, ``'corner'``/``'F'``, ``'U'``,
+              ``'V'``, or an explicit ``{axis: position}`` mapping); an optional
+              ``'south'`` key sets the south-edge mode (default ``'fill'``).
+              Only the north edge folds. See ``padding.py`` for the conventions.
         fill_value : float, optional
             The value to use in the boundary condition when padding='fill'.
         """
@@ -140,13 +149,18 @@ class Axis:
         # (and the default) state: operations that do not require padding along this
         # axis work fine, while those that do will raise an informative error at
         # padding time rather than silently wrapping. See GH #509, #604, #624.
-        if (
+        if isinstance(padding, Mapping):
+            # a north-fold padding value, e.g. {"fold": "corner"}. Validate the
+            # pivot/south here; the seam axis (a cross-axis property) is checked
+            # at the Grid level in `_validate_folds`.
+            padding = _parse_fold_padding(padding)
+        elif (
             padding is not None
             and padding not in _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG
         ):
             raise ValueError(
                 f"padding must be one of {list(_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG.keys())} "
-                f"or None, but got {padding}"
+                f"or a fold spec (e.g. {{'fold': 'corner'}}) or None, but got {padding}"
             )
         self._padding = padding
 
@@ -186,7 +200,7 @@ class Axis:
         return self._default_shifts
 
     @property
-    def padding(self) -> Optional[str]:
+    def padding(self) -> Optional[Union[str, Mapping]]:
         return self._padding
 
     # TODO - remove deprecation handling
